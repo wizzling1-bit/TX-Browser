@@ -1,0 +1,66 @@
+name: tx_browser
+description: "Tx Browser — a premium, privacy-respecting Android browser."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^3.4.2
+
+  # Routing
+  go_router: ^17.3.0
+
+  # Local database
+  drift: ^2.34.3
+  drift_flutter: ^0.3.1
+  sqlite3_flutter_libs: ^0.6.0
+  path_provider: ^2.1.6
+  path: ^1.9.1
+
+  # Browser engine
+  flutter_inappwebview: ^6.1.5
+
+  # Typography
+  google_fonts: ^8.2.1
+
+  # Utilities
+  share_plus: ^13.2.1
+  uuid: ^4.5.3
+  package_info_plus: ^10.2.1
+  url_launcher: ^6.3.2
+  http: ^1.6.0
+  intl: ^0.20.3
+  open_filex: ^4.7.0
+
+  # Security & Biometrics
+  local_auth: ^3.0.2
+  crypto: ^3.0.7
+
+  # Ads
+  google_mobile_ads: ^9.1.0
+
+  # Icons & Hardware
+  speech_to_text: ^7.4.0
+  mobile_scanner: ^7.4.0
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.1
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Lucide
+      fonts:
+        - asset: assets/fonts/lucide.ttf
+
