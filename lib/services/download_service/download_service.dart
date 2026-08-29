@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -162,10 +161,21 @@ class DownloadService {
     return file;
   }
 
-  /// Opens downloaded file in device's default viewer app.
-  Future<OpenResult> openFile(String filePath) async {
-    if (filePath.isEmpty) return OpenResult(type: ResultType.fileNotFound);
-    return await OpenFilex.open(filePath);
+  /// Opens downloaded file in device's default viewer app via native FileProvider.
+  Future<bool> openFile(String filePath, {String mimeType = '*/*'}) async {
+    if (filePath.isEmpty) return false;
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final opened = await _channel.invokeMethod<bool>('openFile', {
+          'filePath': filePath,
+          'mimeType': mimeType,
+        });
+        return opened ?? false;
+      } catch (e) {
+        debugPrint('[DownloadService] Native openFile error: $e');
+      }
+    }
+    return false;
   }
 
   /// Deletes file from local storage.

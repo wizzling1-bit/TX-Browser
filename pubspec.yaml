@@ -36,7 +36,6 @@ dependencies:
   url_launcher: ^6.3.2
   http: ^1.6.0
   intl: ^0.20.3
-  open_filex: ^4.7.0
 
   # Security & Biometrics
   local_auth: ^3.0.2

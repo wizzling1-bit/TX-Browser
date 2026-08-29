@@ -1,4 +1,4 @@
-﻿package com.wizzling.tx_browser
+package com.wizzling.tx_browser
 
 import android.app.DownloadManager
 import android.content.Context
@@ -171,7 +171,7 @@ class DownloadManagerBridge(private val context: Context) : MethodChannel.Method
         val file = File(filePath)
         val uri: Uri = if (file.exists()) {
             try {
-                FileProvider.getUriForFile(context, ".fileprovider", file)
+                FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
             } catch (e: Exception) {
                 Uri.fromFile(file)
             }
@@ -179,8 +179,19 @@ class DownloadManagerBridge(private val context: Context) : MethodChannel.Method
             Uri.parse(filePath)
         }
 
+        val resolvedMimeType = if (mimeType.isEmpty() || mimeType == "*/*") {
+            val extension = MimeTypeMap.getFileExtensionFromUrl(filePath)
+            if (!extension.isNullOrEmpty()) {
+                MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase()) ?: "*/*"
+            } else {
+                "*/*"
+            }
+        } else {
+            mimeType
+        }
+
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, mimeType)
+            setDataAndType(uri, resolvedMimeType)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
 
@@ -202,7 +213,7 @@ class DownloadManagerBridge(private val context: Context) : MethodChannel.Method
 
         var count = 1
         while (true) {
-            val candidate = " ()"
+            val candidate = if (extension.isNotEmpty()) "${baseName} ($count).${extension}" else "${baseName} ($count)"
             if (!File(downloadDir, candidate).exists()) {
                 return candidate
             }
