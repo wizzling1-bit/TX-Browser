@@ -3,22 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TX Browser — Premium. Private. Powerful.</title>
-    <meta name="description" content="TX Browser is a fast, modern, privacy-respecting Android browser with built-in ad blocking, download manager, and on-device security.">
+    <title>TX Browser — Fast, Private & Secure Android Web Browser</title>
+    <meta name="description" content="Official website, Privacy Policy, Terms of Service, and app-ads.txt for TX Browser — a high-performance, privacy-first mobile web browser for Android.">
+    <meta name="keywords" content="TX Browser, Android browser, private browser, ad blocker, download manager, Google Play">
+    <meta name="theme-color" content="#0c120d">
+    
+    <!-- Open Graph Meta -->
+    <meta property="og:title" content="TX Browser — Premium. Private. Powerful.">
+    <meta property="og:description" content="Fast, secure & private web browser for Android with built-in TX Shield ad blocking, download manager, and on-device privacy.">
+    <meta property="og:type" content="website">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --bg-color: #0c120d;
-            --surface-color: rgba(20, 30, 21, 0.85);
-            --surface-border: rgba(96, 153, 102, 0.28);
+            --bg-color: #0a100b;
+            --surface-color: rgba(18, 28, 19, 0.85);
+            --surface-border: rgba(96, 153, 102, 0.25);
+            --surface-hover: rgba(96, 153, 102, 0.12);
             --primary: #609966;
             --primary-light: #9DC08B;
             --primary-dark: #40513B;
             --accent-glow: #39853E;
             --text-main: #EDF1D6;
-            --text-muted: #a4b39b;
+            --text-muted: #a0b297;
+            --text-sub: #74856d;
+            --card-radius: 20px;
         }
 
         * {
@@ -27,155 +39,268 @@
             padding: 0;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            line-height: 1.6;
-            padding: 0;
-            margin: 0;
+            line-height: 1.65;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
             background-image: 
-                radial-gradient(circle at 15% 15%, rgba(96, 153, 102, 0.18) 0%, transparent 45%),
-                radial-gradient(circle at 85% 75%, rgba(57, 133, 62, 0.16) 0%, transparent 45%);
+                radial-gradient(circle at 10% 10%, rgba(96, 153, 102, 0.18) 0%, transparent 45%),
+                radial-gradient(circle at 90% 85%, rgba(57, 133, 62, 0.15) 0%, transparent 45%);
             background-attachment: fixed;
         }
 
-        .container {
-            max-width: 1000px;
+        /* Top Navigation Bar */
+        header.nav-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(10, 16, 11, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--surface-border);
+            padding: 14px 24px;
+        }
+
+        .nav-container {
+            max-width: 1040px;
             margin: 0 auto;
-            padding: 40px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
         }
 
-        /* Hero */
-        .hero {
-            text-align: center;
-            padding: 60px 20px 40px;
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #ffffff;
+            cursor: pointer;
         }
 
-        .logo-emblem {
-            width: 88px;
-            height: 88px;
+        .brand-icon {
+            width: 40px;
+            height: 40px;
             background: linear-gradient(135deg, #4A8C52 0%, #2A5A30 100%);
-            border: 2px solid rgba(157, 192, 139, 0.4);
-            border-radius: 26px;
-            display: inline-flex;
+            border: 1px solid rgba(157, 192, 139, 0.4);
+            border-radius: 12px;
+            display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 24px;
-            box-shadow: 0 12px 32px rgba(57, 133, 62, 0.35);
+            box-shadow: 0 4px 14px rgba(57, 133, 62, 0.35);
         }
 
-        .logo-emblem svg {
-            width: 48px;
-            height: 48px;
+        .brand-icon svg {
+            width: 22px;
+            height: 22px;
             fill: #ffffff;
         }
 
-        h1 {
+        .brand-text {
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+        }
+
+        .nav-tabs {
+            display: flex;
+            align-items: center;
+            background: rgba(22, 33, 23, 0.9);
+            border: 1px solid var(--surface-border);
+            padding: 4px;
+            border-radius: 100px;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 13.5px;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 100px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: #ffffff;
+            background: rgba(96, 153, 102, 0.15);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(96, 153, 102, 0.35);
+        }
+
+        /* Content Sections */
+        main.main-content {
+            flex: 1;
+            max-width: 980px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 36px 20px 60px;
+        }
+
+        .section-view {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .section-view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Hero Styling */
+        .hero {
+            text-align: center;
+            padding: 48px 16px 36px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(96, 153, 102, 0.15);
+            border: 1px solid var(--primary);
+            padding: 6px 14px;
+            border-radius: 100px;
+            margin-bottom: 20px;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--primary-light);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        h1.hero-title {
             font-size: 44px;
             font-weight: 900;
-            color: #ffffff;
             letter-spacing: -1px;
+            color: #ffffff;
             margin-bottom: 12px;
         }
 
-        .tagline {
+        .hero-tagline {
             font-size: 20px;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--primary-light);
-            margin-bottom: 28px;
-            letter-spacing: 0.2px;
+            margin-bottom: 20px;
         }
 
-        .hero-desc {
+        .hero-description {
             font-size: 16px;
             color: var(--text-muted);
-            max-width: 600px;
-            margin: 0 auto 36px;
+            max-width: 620px;
+            margin: 0 auto 32px;
+            line-height: 1.6;
         }
 
-        .cta-buttons {
+        .cta-row {
             display: flex;
-            gap: 16px;
+            align-items: center;
             justify-content: center;
+            gap: 14px;
             flex-wrap: wrap;
         }
 
-        .btn-primary {
+        .btn-action {
             display: inline-flex;
             align-items: center;
             gap: 10px;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: #ffffff;
             font-weight: 700;
-            font-size: 15px;
-            padding: 14px 28px;
+            font-size: 14.5px;
+            padding: 13px 26px;
             border-radius: 14px;
             text-decoration: none;
-            box-shadow: 0 8px 24px rgba(96, 153, 102, 0.3);
-            border: 1px solid rgba(157, 192, 139, 0.4);
+            cursor: pointer;
+            border: 1px solid rgba(157, 192, 139, 0.35);
+            box-shadow: 0 8px 24px rgba(96, 153, 102, 0.25);
             transition: all 0.2s ease;
         }
 
-        .btn-primary:hover {
+        .btn-action:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 30px rgba(96, 153, 102, 0.45);
+            box-shadow: 0 12px 28px rgba(96, 153, 102, 0.4);
         }
 
-        .btn-secondary {
+        .btn-action-outline {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             background: var(--surface-color);
             color: var(--text-main);
             font-weight: 600;
-            font-size: 15px;
-            padding: 14px 24px;
+            font-size: 14.5px;
+            padding: 13px 22px;
             border-radius: 14px;
             text-decoration: none;
+            cursor: pointer;
             border: 1px solid var(--surface-border);
             transition: all 0.2s ease;
         }
 
-        .btn-secondary:hover {
-            background: rgba(96, 153, 102, 0.2);
+        .btn-action-outline:hover {
+            background: var(--surface-hover);
             color: #ffffff;
+            border-color: var(--primary-light);
         }
 
         /* Features Grid */
-        .features {
+        .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
-            margin: 60px 0;
+            margin-top: 48px;
         }
 
         .feature-card {
             background: var(--surface-color);
             border: 1px solid var(--surface-border);
-            border-radius: 20px;
+            border-radius: var(--card-radius);
             padding: 28px 24px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(12px);
-            transition: transform 0.2s ease;
+            transition: all 0.2s ease;
         }
 
         .feature-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-3px);
             border-color: var(--primary-light);
         }
 
-        .feature-icon {
+        .feature-icon-badge {
             width: 44px;
             height: 44px;
-            background: rgba(96, 153, 102, 0.15);
+            background: rgba(96, 153, 102, 0.16);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 22px;
             margin-bottom: 16px;
-            color: var(--primary-light);
-            font-size: 20px;
         }
 
         .feature-card h3 {
@@ -191,109 +316,490 @@
             line-height: 1.55;
         }
 
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 40px 20px 20px;
-            border-top: 1px solid var(--surface-border);
-            color: var(--text-muted);
-            font-size: 13.5px;
+        /* Glassmorphic Document Paper (Privacy, Terms, app-ads) */
+        .doc-paper {
+            background: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            padding: 44px 36px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
         }
 
-        footer a {
+        .doc-header {
+            text-align: center;
+            margin-bottom: 36px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--surface-border);
+        }
+
+        .doc-header h2 {
+            font-size: 32px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .doc-date {
+            font-size: 13.5px;
+            color: var(--text-sub);
+        }
+
+        .highlight-banner {
+            background: rgba(96, 153, 102, 0.09);
+            border-left: 4px solid var(--primary);
+            border-radius: 0 14px 14px 0;
+            padding: 16px 20px;
+            margin-bottom: 32px;
+            font-size: 14.5px;
+            color: var(--text-main);
+        }
+
+        .doc-section {
+            margin-bottom: 32px;
+        }
+
+        .doc-section h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-light);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .doc-section p {
+            font-size: 15px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+            line-height: 1.65;
+        }
+
+        .doc-section ul {
+            margin-left: 22px;
+            margin-bottom: 14px;
+            color: var(--text-muted);
+            font-size: 14.5px;
+        }
+
+        .doc-section li {
+            margin-bottom: 8px;
+        }
+
+        .doc-section strong {
+            color: var(--text-main);
+        }
+
+        .doc-section a {
             color: var(--primary-light);
             text-decoration: none;
-            margin: 0 10px;
-            font-weight: 500;
         }
 
-        footer a:hover {
+        .doc-section a:hover {
             text-decoration: underline;
             color: #ffffff;
+        }
+
+        /* app-ads.txt box */
+        .code-box-wrapper {
+            background: #060a07;
+            border: 1px solid var(--surface-border);
+            border-radius: 14px;
+            padding: 20px;
+            position: relative;
+            margin: 24px 0;
+        }
+
+        .code-box {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: #a3e635;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        .btn-copy {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: rgba(96, 153, 102, 0.25);
+            border: 1px solid var(--primary);
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-copy:hover {
+            background: var(--primary);
+        }
+
+        /* Footer */
+        footer.page-footer {
+            background: rgba(10, 16, 11, 0.95);
+            border-top: 1px solid var(--surface-border);
+            padding: 32px 24px;
+            text-align: center;
+            font-size: 13.5px;
+            color: var(--text-sub);
+            margin-top: auto;
+        }
+
+        .footer-links {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+            cursor: pointer;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary-light);
+            text-decoration: underline;
+        }
+
+        @media (max-width: 720px) {
+            .nav-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .nav-tabs {
+                justify-content: center;
+                overflow-x: auto;
+            }
+            .tab-btn {
+                padding: 7px 12px;
+                font-size: 12.5px;
+            }
+            .doc-paper {
+                padding: 28px 18px;
+                border-radius: 18px;
+            }
+            h1.hero-title {
+                font-size: 32px;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="logo-emblem">
-            <svg viewBox="0 0 24 24">
-                <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
-                <line x1="16" y1="8" x2="2" y2="22"/>
-                <line x1="17.5" y1="15" x2="9" y2="15"/>
-            </svg>
-        </div>
-        <h1>TX Browser</h1>
-        <div class="tagline">Premium. Private. Powerful.</div>
-        <p class="hero-desc">
-            A next-generation mobile browser for Android featuring an on-device privacy architecture, multi-layer TX Shield content blocker, robust download manager, and rich visual tab management.
-        </p>
-
-        <div class="cta-buttons">
-            <a href="privacy-policy.html" class="btn-primary">
-                <span>View Privacy Policy</span>
+    <!-- Sticky Navigation Header -->
+    <header class="nav-header">
+        <div class="nav-container">
+            <a class="brand-link" onclick="switchSection('home')">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+                        <line x1="16" y1="8" x2="2" y2="22"/>
+                        <line x1="17.5" y1="15" x2="9" y2="15"/>
+                    </svg>
+                </div>
+                <span class="brand-text">TX Browser</span>
             </a>
-            <a href="terms.html" class="btn-secondary">
-                <span>Terms of Service</span>
-            </a>
-            <a href="app-ads.txt" class="btn-secondary">
-                <span>app-ads.txt</span>
-            </a>
-        </div>
-    </section>
 
-    <!-- Features Section -->
-    <section class="features">
-        <div class="feature-card">
-            <div class="feature-icon">🛡️</div>
-            <h3>TX Shield Content Blocker</h3>
-            <p>High-performance local rule-matching engine that stops intrusive popups, banners, and malicious trackers before they load.</p>
+            <nav class="nav-tabs" role="tablist">
+                <button class="tab-btn active" id="tab-home" onclick="switchSection('home')">Home</button>
+                <button class="tab-btn" id="tab-privacy" onclick="switchSection('privacy')">Privacy Policy</button>
+                <button class="tab-btn" id="tab-terms" onclick="switchSection('terms')">Terms</button>
+                <button class="tab-btn" id="tab-appads" onclick="switchSection('appads')">app-ads.txt</button>
+            </nav>
         </div>
+    </header>
 
-        <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <h3>Lightning Fast Webview</h3>
-            <p>Engineered for maximum speed with intelligent asset caching, zero UI-thread blocking, and smooth 60fps animations.</p>
-        </div>
+    <!-- Main Content Container -->
+    <main class="main-content">
 
-        <div class="feature-card">
-            <div class="feature-icon">🔒</div>
-            <h3>On-Device Local Privacy</h3>
-            <p>Your history, bookmarks, and cookies never leave your device. Private tabs purge immediately upon exit without leaving a trace.</p>
-        </div>
+        <!-- ==================== HOME SECTION ==================== -->
+        <section id="view-home" class="section-view active">
+            <div class="hero">
+                <div class="hero-badge">⚡ Android 16 Ready &bull; Native Engine</div>
+                <h1 class="hero-title">TX Browser</h1>
+                <div class="hero-tagline">Premium. Private. Powerful.</div>
+                <p class="hero-description">
+                    A next-generation mobile browser engineered for lightning speed, local-first on-device privacy, built-in TX Shield ad blocking, and a multi-threaded download manager.
+                </p>
+                <div class="cta-row">
+                    <button class="btn-action" onclick="switchSection('privacy')">
+                        <span>Read Privacy Policy</span>
+                    </button>
+                    <button class="btn-action-outline" onclick="switchSection('terms')">
+                        <span>Terms of Service</span>
+                    </button>
+                    <button class="btn-action-outline" onclick="switchSection('appads')">
+                        <span>View app-ads.txt</span>
+                    </button>
+                </div>
+            </div>
 
-        <div class="feature-card">
-            <div class="feature-icon">📥</div>
-            <h3>Native Download Manager</h3>
-            <p>Reliable background downloads powered by Android DownloadManager with real progress tracking and instant file opening.</p>
-        </div>
+            <!-- Features Grid -->
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon-badge">🛡️</div>
+                    <h3>TX Shield Content Blocker</h3>
+                    <p>High-performance local rule-matching engine that neutralizes intrusive popups, banners, and malicious telemetry trackers before they execute.</p>
+                </div>
 
-        <div class="feature-card">
-            <div class="feature-icon">🗂️</div>
-            <h3>Visual Tab Manager</h3>
-            <p>Real-time page preview cards and color-coded tab grouping designed for effortless multi-tab multitasking.</p>
-        </div>
+                <div class="feature-card">
+                    <div class="feature-icon-badge">⚡</div>
+                    <h3>Lightning Fast Rendering</h3>
+                    <p>Optimized for instantaneous page starts and smooth 60fps scrolling with zero UI-thread blocking and minimal battery consumption.</p>
+                </div>
 
-        <div class="feature-card">
-            <div class="feature-icon">🔐</div>
-            <h3>Biometric App Lock</h3>
-            <p>Secure your browsing sessions with encrypted 4-digit PIN protection and native Android fingerprint/face unlock.</p>
-        </div>
-    </section>
+                <div class="feature-card">
+                    <div class="feature-icon-badge">🔒</div>
+                    <h3>Local-First Privacy</h3>
+                    <p>Your history, bookmarks, and cookies never leave your device. Private tabs purge automatically upon exit without leaving a trace.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon-badge">📥</div>
+                    <h3>Native Download Manager</h3>
+                    <p>Background multi-file downloads powered by Android DownloadManager with live progress notifications and one-tap file sharing.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon-badge">🗂️</div>
+                    <h3>Visual Tab Manager</h3>
+                    <p>Dynamic real-time webpage preview cards and color-coded tab grouping designed for effortless multi-tab multitasking.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon-badge">🔐</div>
+                    <h3>Biometric App Lock</h3>
+                    <p>Protect your private browsing sessions with local SHA-256 salted PIN protection and native Android fingerprint/face unlock.</p>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== PRIVACY POLICY SECTION ==================== -->
+        <section id="view-privacy" class="section-view">
+            <div class="doc-paper">
+                <div class="doc-header">
+                    <h2>Privacy Policy</h2>
+                    <div class="doc-date">Effective Date: August 29, 2026 | Application: TX Browser</div>
+                </div>
+
+                <div class="highlight-banner">
+                    <strong>Local-First Architecture:</strong> TX Browser operates on an on-device architecture. Your browsing history, search queries, active tabs, bookmarks, and downloads never leave your phone. We do not operate remote tracking servers or sell your data.
+                </div>
+
+                <div class="doc-section">
+                    <h3>1. Introduction</h3>
+                    <p>This Privacy Policy explains how <strong>TX Browser</strong> ("we", "us", or "our") handles user information when you use our mobile application. We believe privacy is a fundamental human right, and we have designed TX Browser to minimize data collection by default.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>2. Information We Do NOT Collect</h3>
+                    <p>Unlike traditional browsers, TX Browser does not operate proprietary cloud sync servers or central user profiling databases. The following data is processed and stored <strong>exclusively on your local device</strong>:</p>
+                    <ul>
+                        <li><strong>Browsing History & Cache:</strong> Stored locally in an encrypted on-device SQLite database. Never transmitted to our servers.</li>
+                        <li><strong>Search Queries:</strong> Sent directly and exclusively to your chosen search engine (DuckDuckGo, Google, Bing, Yahoo, Brave).</li>
+                        <li><strong>Tabs & Tab Groups:</strong> Stored locally. Private (Incognito) tabs are purged from memory and storage immediately upon closing or app termination.</li>
+                        <li><strong>Bookmarks & Shortcuts:</strong> Maintained solely on your device.</li>
+                        <li><strong>Passcodes & Biometrics:</strong> App Lock PINs are hashed using local SHA-256 with cryptographic salting; biometrics are verified solely via Android's local BiometricPrompt system.</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section">
+                    <h3>3. Device Permissions & How They Are Used</h3>
+                    <p>TX Browser requests only the minimal system permissions required to deliver browser features. All permissions are used <strong>ephemerally and on-device only</strong>:</p>
+                    <ul>
+                        <li><strong>Camera (<code>android.permission.CAMERA</code>):</strong> Used solely when you open the QR code scanner to scan URLs. Camera frames are analyzed locally in real-time and are never recorded, saved, or uploaded.</li>
+                        <li><strong>Microphone (<code>android.permission.RECORD_AUDIO</code>):</strong> Used solely when you tap the voice search microphone button to convert spoken speech to search text via Android's SpeechRecognizer. Audio is not stored or shared by TX Browser.</li>
+                        <li><strong>Notifications (<code>android.permission.POST_NOTIFICATIONS</code>):</strong> Used on Android 13+ to show real-time download progress, download completion notices, and security alerts.</li>
+                        <li><strong>Storage & Downloads:</strong> Used to save files that you explicitly choose to download from the web to your device's Public Downloads folder using Android's native DownloadManager.</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section">
+                    <h3>4. Third-Party Services & Advertising</h3>
+                    <p>To support the ongoing development of TX Browser, we integrate standard, privacy-compliant developer services:</p>
+                    <ul>
+                        <li><strong>Google AdMob (Google Mobile Ads SDK):</strong> We display non-intrusive advertisements outside of webpage content. Google AdMob may automatically collect coarse device identifiers, ad performance data, and diagnostics to serve relevant ads and combat fraud. For more details on Google's practices, please visit <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy & Terms</a>.</li>
+                        <li><strong>Google Play Install Referrer:</strong> Used upon first app installation to retrieve campaign attribution parameters passed from the Google Play Store (such as deferred deep links) to open requested websites and customize your Quick Access list. This does not track your ongoing personal identity.</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section">
+                    <h3>5. Content Blocking & TX Shield</h3>
+                    <p>TX Browser includes a built-in privacy protection engine (TX Shield) that blocks known malicious trackers, intrusive popups, and harmful scripts. All rule matching and blocking decisions occur entirely <strong>locally on your device</strong> with zero external telemetry.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>6. Children's Privacy</h3>
+                    <p>TX Browser is a general-purpose utility designed for a general audience (ages 18 and older). We do not knowingly collect personal identifiable information from children under the age of 13. If you believe a child has provided personal information to us, please contact us so we can take appropriate measures.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>7. User Control & Data Deletion</h3>
+                    <p>You maintain 100% control over your data at all times:</p>
+                    <ul>
+                        <li><strong>Clear Browsing Data:</strong> You can clear history, cache, cookies, and saved downloads at any time directly from the in-app Settings menu.</li>
+                        <li><strong>Private Browsing:</strong> Using Private Tabs ensures zero history, cookies, or session cache are retained after closing the session.</li>
+                        <li><strong>Complete App Purge:</strong> Uninstalling TX Browser permanently deletes all local databases, settings, and cached assets from your device.</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section">
+                    <h3>8. Contact Information</h3>
+                    <p>If you have any questions, feedback, or concerns regarding this Privacy Policy, please contact us at:</p>
+                    <ul>
+                        <li><strong>Developer:</strong> devbharat756-netizen</li>
+                        <li><strong>Email:</strong> <a href="mailto:devbharat756@gmail.com">devbharat756@gmail.com</a></li>
+                        <li><strong>Repository:</strong> <a href="https://github.com/devbharat756-netizen/tx--browser" target="_blank" rel="noopener">https://github.com/devbharat756-netizen/tx--browser</a></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== TERMS OF SERVICE SECTION ==================== -->
+        <section id="view-terms" class="section-view">
+            <div class="doc-paper">
+                <div class="doc-header">
+                    <h2>Terms of Service</h2>
+                    <div class="doc-date">Effective Date: August 29, 2026 | Application: TX Browser</div>
+                </div>
+
+                <div class="doc-section">
+                    <h3>1. Acceptance of Terms</h3>
+                    <p>By downloading, installing, or using <strong>TX Browser</strong> ("the Application"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Application.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>2. License & Use of Application</h3>
+                    <p>We grant you a revocable, non-exclusive, non-transferable, limited license to download, install, and use TX Browser strictly in accordance with these terms for your personal, non-commercial use.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>3. Prohibited Activities</h3>
+                    <p>When using TX Browser, you agree not to:</p>
+                    <ul>
+                        <li>Use the Application for any unlawful, fraudulent, or harmful purpose.</li>
+                        <li>Attempt to decompile, reverse engineer, or disassemble any portion of the software.</li>
+                        <li>Bypass or attempt to circumvent security controls, content filters, or authentication mechanisms.</li>
+                        <li>Transmit malicious software, viruses, or harmful automated scripts through the Application.</li>
+                    </ul>
+                </div>
+
+                <div class="doc-section">
+                    <h3>4. Third-Party Websites & Content</h3>
+                    <p>TX Browser is a web navigation tool that provides access to the World Wide Web. We do not own, control, or endorse third-party websites or content accessed through the browser. Your interaction with third-party sites is governed solely by those sites' respective terms and privacy policies.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>5. Disclaimers & Limitation of Liability</h3>
+                    <p>TX Browser is provided on an "AS IS" and "AS AVAILABLE" basis without warranties of any kind, whether express or implied. To the maximum extent permitted by law, we shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Application.</p>
+                </div>
+
+                <div class="doc-section">
+                    <h3>6. Contact Us</h3>
+                    <p>For questions concerning these Terms of Service, please contact:</p>
+                    <ul>
+                        <li><strong>Developer:</strong> devbharat756-netizen</li>
+                        <li><strong>Email:</strong> <a href="mailto:devbharat756@gmail.com">devbharat756@gmail.com</a></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== APP-ADS.TXT SECTION ==================== -->
+        <section id="view-appads" class="section-view">
+            <div class="doc-paper">
+                <div class="doc-header">
+                    <h2>Authorized Digital Sellers (app-ads.txt)</h2>
+                    <div class="doc-date">Google AdMob Publisher Verification</div>
+                </div>
+
+                <div class="doc-section">
+                    <p>The following record is the official <code>app-ads.txt</code> configuration for <strong>TX Browser</strong> to authenticate authorized AdMob ad inventory sales in compliance with IAB Tech Lab standards:</p>
+                    
+                    <div class="code-box-wrapper">
+                        <button class="btn-copy" onclick="copyAppAds()">Copy Record</button>
+                        <div class="code-box" id="appads-text">google.com, pub-3435015056397165, DIRECT, f08c47fec0942fa0</div>
+                    </div>
+
+                    <p>AdMob crawlers verify domain ownership at: <br>
+                    <code>https://&lt;your-domain&gt;/app-ads.txt</code></p>
+                </div>
+            </div>
+        </section>
+
+    </main>
 
     <!-- Footer -->
-    <footer>
-        <p>&copy; 2026 TX Browser. Developed by devbharat756-netizen.</p>
-        <p style="margin-top: 12px;">
-            <a href="privacy-policy.html">Privacy Policy</a> &bull;
-            <a href="terms.html">Terms of Service</a> &bull;
-            <a href="app-ads.txt">app-ads.txt</a> &bull;
-            <a href="https://github.com/devbharat756-netizen/tx--browser" target="_blank" rel="noopener">GitHub Repository</a>
-        </p>
+    <footer class="page-footer">
+        <p>&copy; 2026 TX Browser. All rights reserved &bull; Developed by devbharat756-netizen.</p>
+        <div class="footer-links">
+            <a onclick="switchSection('home')">Home</a> &bull;
+            <a onclick="switchSection('privacy')">Privacy Policy</a> &bull;
+            <a onclick="switchSection('terms')">Terms of Service</a> &bull;
+            <a onclick="switchSection('appads')">app-ads.txt</a> &bull;
+            <a href="https://github.com/devbharat756-netizen/tx--browser" target="_blank" rel="noopener">GitHub</a>
+        </div>
     </footer>
-</div>
 
+    <!-- Interactive Navigation Script -->
+    <script>
+        function switchSection(sectionId) {
+            // Hide all views
+            const views = document.querySelectorAll('.section-view');
+            views.forEach(view => view.classList.remove('active'));
+
+            // Remove active from all tabs
+            const tabs = document.querySelectorAll('.tab-btn');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Activate chosen view & tab
+            const targetView = document.getElementById('view-' + sectionId);
+            const targetTab = document.getElementById('tab-' + sectionId);
+
+            if (targetView) targetView.classList.add('active');
+            if (targetTab) targetTab.classList.add('active');
+
+            // Update URL hash without reload
+            window.location.hash = sectionId;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Handle URL hashes like #privacy, #terms, #appads, #home on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash.replace('#', '').toLowerCase();
+            if (hash === 'privacy' || hash === 'privacy-policy') {
+                switchSection('privacy');
+            } else if (hash === 'terms' || hash === 'terms-of-service') {
+                switchSection('terms');
+            } else if (hash === 'appads' || hash === 'app-ads' || hash === 'app-ads.txt') {
+                switchSection('appads');
+            } else {
+                switchSection('home');
+            }
+        });
+
+        // Copy app-ads.txt helper
+        function copyAppAds() {
+            const text = document.getElementById('appads-text').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.btn-copy');
+                btn.innerText = 'Copied!';
+                setTimeout(() => { btn.innerText = 'Copy Record'; }, 2000);
+            });
+        }
+    </script>
 </body>
 </html>
