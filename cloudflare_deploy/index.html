@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TX Browser — Fast, Private & Secure Android Web Browser</title>
+    <meta name="description" content="TX Browser is a fast, modern, privacy-respecting Android browser with built-in ad blocking, download manager, and on-device security.">
+    <meta name="keywords" content="TX Browser, Android browser, private browser, ad blocker, download manager, Google Play">
+    <meta name="theme-color" content="#0a100b">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0a100b;
+            --surface-color: rgba(18, 28, 19, 0.85);
+            --surface-border: rgba(96, 153, 102, 0.25);
+            --surface-hover: rgba(96, 153, 102, 0.12);
+            --primary: #609966;
+            --primary-light: #9DC08B;
+            --primary-dark: #40513B;
+            --accent-glow: #39853E;
+            --text-main: #EDF1D6;
+            --text-muted: #a0b297;
+            --text-sub: #74856d;
+            --card-radius: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.65;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(96, 153, 102, 0.18) 0%, transparent 45%),
+                radial-gradient(circle at 90% 85%, rgba(57, 133, 62, 0.15) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        header.nav-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(10, 16, 11, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--surface-border);
+            padding: 14px 24px;
+        }
+
+        .nav-container {
+            max-width: 1040px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #ffffff;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #4A8C52 0%, #2A5A30 100%);
+            border: 1px solid rgba(157, 192, 139, 0.4);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(57, 133, 62, 0.35);
+        }
+
+        .brand-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: #ffffff;
+        }
+
+        .brand-text {
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+        }
+
+        .nav-tabs {
+            display: flex;
+            align-items: center;
+            background: rgba(22, 33, 23, 0.9);
+            border: 1px solid var(--surface-border);
+            padding: 4px;
+            border-radius: 100px;
+            gap: 4px;
+        }
+
+        .tab-link {
+            color: var(--text-muted);
+            font-size: 13.5px;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 100px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .tab-link:hover {
+            color: #ffffff;
+            background: rgba(96, 153, 102, 0.15);
+        }
+
+        .tab-link.active {
+            background: var(--primary);
+            color: #ffffff;
+        }
+
+        main.main-content {
+            flex: 1;
+            max-width: 980px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 36px 20px 60px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 48px 16px 36px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(96, 153, 102, 0.15);
+            border: 1px solid var(--primary);
+            padding: 6px 14px;
+            border-radius: 100px;
+            margin-bottom: 20px;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--primary-light);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        h1.hero-title {
+            font-size: 44px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            color: #ffffff;
+            margin-bottom: 12px;
+        }
+
+        .hero-tagline {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary-light);
+            margin-bottom: 20px;
+        }
+
+        .hero-description {
+            font-size: 16px;
+            color: var(--text-muted);
+            max-width: 620px;
+            margin: 0 auto 32px;
+            line-height: 1.6;
+        }
+
+        .cta-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 14.5px;
+            padding: 13px 26px;
+            border-radius: 14px;
+            text-decoration: none;
+            border: 1px solid rgba(157, 192, 139, 0.35);
+            box-shadow: 0 8px 24px rgba(96, 153, 102, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(96, 153, 102, 0.4);
+        }
+
+        .btn-action-outline {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface-color);
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 14.5px;
+            padding: 13px 22px;
+            border-radius: 14px;
+            text-decoration: none;
+            border: 1px solid var(--surface-border);
+            transition: all 0.2s ease;
+        }
+
+        .btn-action-outline:hover {
+            background: var(--surface-hover);
+            color: #ffffff;
+            border-color: var(--primary-light);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 48px;
+        }
+
+        .feature-card {
+            background: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--card-radius);
+            padding: 28px 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(12px);
+            transition: all 0.2s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary-light);
+        }
+
+        .feature-icon-badge {
+            width: 44px;
+            height: 44px;
+            background: rgba(96, 153, 102, 0.16);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.55;
+        }
+
+        footer.page-footer {
+            background: rgba(10, 16, 11, 0.95);
+            border-top: 1px solid var(--surface-border);
+            padding: 32px 24px;
+            text-align: center;
+            font-size: 13.5px;
+            color: var(--text-sub);
+            margin-top: auto;
+        }
+
+        .footer-links {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary-light);
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="nav-header">
+        <div class="nav-container">
+            <a href="/" class="brand-link">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+                        <line x1="16" y1="8" x2="2" y2="22"/>
+                        <line x1="17.5" y1="15" x2="9" y2="15"/>
+                    </svg>
+                </div>
+                <span class="brand-text">TX Browser</span>
+            </a>
+
+            <nav class="nav-tabs">
+                <a href="/" class="tab-link active">Home</a>
+                <a href="/privacy" class="tab-link">Privacy Policy</a>
+                <a href="/terms" class="tab-link">Terms</a>
+                <a href="/app-ads.txt" class="tab-link">app-ads.txt</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="hero">
+            <div class="hero-badge">⚡ Android 16 Ready &bull; Native Engine</div>
+            <h1 class="hero-title">TX Browser</h1>
+            <div class="hero-tagline">Premium. Private. Powerful.</div>
+            <p class="hero-description">
+                A next-generation mobile browser engineered for lightning speed, local-first on-device privacy, built-in TX Shield ad blocking, and a multi-threaded download manager.
+            </p>
+            <div class="cta-row">
+                <a href="/privacy" class="btn-action">
+                    <span>Read Privacy Policy</span>
+                </a>
+                <a href="/terms" class="btn-action-outline">
+                    <span>Terms of Service</span>
+                </a>
+                <a href="/app-ads.txt" class="btn-action-outline">
+                    <span>View app-ads.txt</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon-badge">🛡️</div>
+                <h3>TX Shield Content Blocker</h3>
+                <p>High-performance local rule-matching engine that neutralizes intrusive popups, banners, and malicious telemetry trackers before they execute.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge">⚡</div>
+                <h3>Lightning Fast Rendering</h3>
+                <p>Optimized for instantaneous page starts and smooth 60fps scrolling with zero UI-thread blocking and minimal battery consumption.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge">🔒</div>
+                <h3>Local-First Privacy</h3>
+                <p>Your history, bookmarks, and cookies never leave your device. Private tabs purge automatically upon exit without leaving a trace.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge">📥</div>
+                <h3>Native Download Manager</h3>
+                <p>Background multi-file downloads powered by Android DownloadManager with live progress notifications and one-tap file sharing.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge">🗂️</div>
+                <h3>Visual Tab Manager</h3>
+                <p>Dynamic real-time webpage preview cards and color-coded tab grouping designed for effortless multi-tab multitasking.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge">🔐</div>
+                <h3>Biometric App Lock</h3>
+                <p>Protect your private browsing sessions with local SHA-256 salted PIN protection and native Android fingerprint/face unlock.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="page-footer">
+        <p>&copy; 2026 TX Browser. All rights reserved &bull; Developed by devbharat756-netizen.</p>
+        <div class="footer-links">
+            <a href="/">Home</a> &bull;
+            <a href="/privacy">Privacy Policy</a> &bull;
+            <a href="/terms">Terms of Service</a> &bull;
+            <a href="/app-ads.txt">app-ads.txt</a> &bull;
+            <a href="https://github.com/devbharat756-netizen/tx--browser" target="_blank" rel="noopener">GitHub</a>
+        </div>
+    </footer>
+
+</body>
+</html>
