@@ -180,16 +180,8 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
       }
 
       // Listen for incoming warm deep links
-      _deepLinkSubscription = acquisitionService.onDeepLink.listen((url) async {
+      _deepLinkSubscription = acquisitionService.onDeepLink.listen((url) {
         if (url.isNotEmpty) {
-          final uri = Uri.tryParse(url);
-          final host = uri?.host.replaceAll('www.', '') ?? 'Link';
-          final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Link';
-          await ref.read(shortcutsProvider.notifier).addShortcutIfNotExists(
-            label: label,
-            url: url,
-            faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
-          );
           ref.read(tabsProvider.notifier).openTab(url: url);
           _router.push('/browser', extra: url);
         }
