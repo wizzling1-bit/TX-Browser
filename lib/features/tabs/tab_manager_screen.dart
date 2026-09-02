@@ -1139,60 +1139,78 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
         // ─── 5. GROUNDED DOCKED BOTTOM ACTION BAR WITH IN-FEED AD ───
         bottomNavigationBar: SafeArea(
           top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const TxNativeAdCard(
-                variant: TxAdSizeVariant.standardBanner,
-                margin: EdgeInsets.symmetric(horizontal: TxSpacing.lg, vertical: 4),
-              ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(
-                  TxSpacing.lg,
-                  TxSpacing.xs,
-                  TxSpacing.lg,
-                  TxSpacing.md,
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              border: Border(
+                top: BorderSide(
+                  color: colors.border.withValues(alpha: 0.5),
+                  width: 1,
                 ),
-                child: Center(
-                  heightFactor: 1.0,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 600),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TxButton(
-                            label: _filterMode == TabFilterMode.incognito
-                                ? 'New Private Tab'
-                                : 'New Tab',
-                            icon: LucideIcons.plus,
-                            variant: TxButtonVariant.primary,
-                            onPressed: () => _openNewTab(
-                              isPrivate: _filterMode == TabFilterMode.incognito,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const TxNativeAdCard(
+                  variant: TxAdSizeVariant.standardBanner,
+                  margin: EdgeInsets.fromLTRB(TxSpacing.md, 6, TxSpacing.md, 2),
+                ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(
+                    TxSpacing.lg,
+                    TxSpacing.xs,
+                    TxSpacing.lg,
+                    TxSpacing.sm,
+                  ),
+                  child: Center(
+                    heightFactor: 1.0,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TxButton(
+                              label: _filterMode == TabFilterMode.incognito
+                                  ? 'New Private Tab'
+                                  : 'New Tab',
+                              icon: LucideIcons.plus,
+                              variant: TxButtonVariant.primary,
+                              onPressed: () => _openNewTab(
+                                isPrivate: _filterMode == TabFilterMode.incognito,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: TxSpacing.md),
-                        TxButton(
-                          label: 'Done',
-                          variant: TxButtonVariant.secondary,
-                          onPressed: () {
-                            if (tabState.activeTab != null &&
-                                tabState.activeTab!.url.isNotEmpty) {
-                              context.go(
-                                '/browser',
-                                extra: tabState.activeTab!.url,
-                              );
-                            } else {
-                              context.go('/');
-                            }
-                          },
-                        ),
-                      ],
+                          const SizedBox(width: TxSpacing.md),
+                          TxButton(
+                            label: 'Done',
+                            variant: TxButtonVariant.secondary,
+                            onPressed: () {
+                              if (tabState.activeTab != null &&
+                                  tabState.activeTab!.url.isNotEmpty) {
+                                context.go(
+                                  '/browser',
+                                  extra: tabState.activeTab!.url,
+                                );
+                              } else {
+                                context.go('/');
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

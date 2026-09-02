@@ -17,36 +17,58 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+    with TickerProviderStateMixin {
+  late AnimationController _entranceController;
+  late AnimationController _pulseController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _progressAnimation;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _entranceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 650),
+      duration: const Duration(milliseconds: 750),
     );
 
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+
     _fadeAnimation = CurvedAnimation(
-      parent: _controller,
+      parent: _entranceController,
       curve: Curves.easeOutCubic,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.88, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.82, end: 1.0).animate(
       CurvedAnimation(
-        parent: _controller,
+        parent: _entranceController,
         curve: Curves.easeOutBack,
       ),
     );
 
-    _controller.forward();
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.06).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: Curves.easeInOutCubic,
+      ),
+    );
+
+    _entranceController.forward();
 
     // Fast, non-blocking splash duration -> navigate to target website or Home
-    _timer = Timer(const Duration(milliseconds: 1400), () {
+    _timer = Timer(const Duration(milliseconds: 1350), () {
       if (mounted) {
         final deferred = ref.read(deferredNavigationPayloadProvider);
         if (deferred != null && deferred.targetUrl.isNotEmpty) {
@@ -61,40 +83,51 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   void dispose() {
     _timer?.cancel();
-    _controller.dispose();
+    _entranceController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
+    final isDark = colors.isDark;
 
     return Scaffold(
       backgroundColor: colors.bg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           // Background ambient gradient orb
           Center(
-            child: Container(
-              width: 320,
-              height: 320,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    colors.primary.withValues(alpha: 0.18),
-                    colors.primary.withValues(alpha: 0.05),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
+            child: AnimatedBuilder(
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseAnimation.value,
+                  child: Container(
+                    width: 360,
+                    height: 360,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          colors.primary.withValues(alpha: isDark ? 0.22 : 0.14),
+                          colors.primary.withValues(alpha: isDark ? 0.08 : 0.03),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 
           // Central Brand Hero
           Center(
             child: AnimatedBuilder(
-              animation: _controller,
+              animation: _entranceController,
               builder: (context, child) {
                 return Opacity(
                   opacity: _fadeAnimation.value,
@@ -103,10 +136,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Leaf Brandmark Icon
+                        // Luxury Leaf Brandmark Icon Badge
                         Container(
-                          width: 88,
-                          height: 88,
+                          width: 96,
+                          height: 96,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
@@ -117,29 +150,51 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               ],
                             ),
                             borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(44),
-                              topRight: Radius.circular(44),
-                              bottomLeft: Radius.circular(12),
-                              bottomRight: Radius.circular(44),
+                              topLeft: Radius.circular(48),
+                              topRight: Radius.circular(48),
+                              bottomLeft: Radius.circular(16),
+                              bottomRight: Radius.circular(48),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: colors.primary.withValues(alpha: 0.35),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
+                                color: colors.primary.withValues(alpha: isDark ? 0.45 : 0.28),
+                                blurRadius: 32,
+                                spreadRadius: 2,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned(
+                                top: 8,
+                                left: 14,
+                                child: Container(
+                                  width: 24,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.25),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              const Center(
+                                child: Icon(
+                                  LucideIcons.leaf,
+                                  size: 48,
+                                  color: Colors.white,
+                                ),
                               ),
                             ],
                           ),
-                          child: const Center(
-                            child: Icon(
-                              LucideIcons.leaf,
-                              size: 44,
-                              color: Colors.white,
-                            ),
-                          ),
                         ),
 
-                        const SizedBox(height: TxSpacing.xl),
+                        const SizedBox(height: TxSpacing.xxl),
 
                         // Title
                         Text(
@@ -148,6 +203,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                                 fontWeight: FontWeight.w800,
                                 color: colors.textPrimary,
                                 letterSpacing: -0.5,
+                                fontSize: 26,
                               ),
                         ),
 
@@ -156,11 +212,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         // Tagline
                         Text(
                           ref.watch(deferredNavigationPayloadProvider) != null
-                              ? 'Opening your requested site...'
+                              ? 'Opening requested site...'
                               : 'Premium. Private. Powerful.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: colors.textSecondary,
                                 letterSpacing: 0.4,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
                         ),
@@ -172,18 +229,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             ),
           ),
 
-          // Bottom subtle indicator
+          // Bottom sleek progress indicator
           Positioned(
-            bottom: MediaQuery.of(context).padding.bottom + TxSpacing.xl,
+            bottom: MediaQuery.of(context).padding.bottom + 40,
             left: 0,
             right: 0,
             child: Center(
               child: SizedBox(
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colors.primary.withValues(alpha: 0.5),
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
+                  backgroundColor: colors.primary.withValues(alpha: 0.15),
                 ),
               ),
             ),

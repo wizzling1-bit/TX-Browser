@@ -40,12 +40,16 @@ class TxNativeAdCard extends StatefulWidget {
   State<TxNativeAdCard> createState() => _TxNativeAdCardState();
 }
 
-class _TxNativeAdCardState extends State<TxNativeAdCard> {
+class _TxNativeAdCardState extends State<TxNativeAdCard>
+    with AutomaticKeepAliveClientMixin {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
   bool _isLoading = false;
   bool _hasFailed = false;
   Timer? _retryTimer;
+
+  @override
+  bool get wantKeepAlive => true;
 
   AdSize get _adSize {
     switch (widget.variant) {
@@ -121,9 +125,18 @@ class _TxNativeAdCardState extends State<TxNativeAdCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Collapse entirely if ad failed and retry also failed
-    if (!_isAdLoaded && !_isLoading) {
-      return const SizedBox.shrink();
+    super.build(context);
+
+    // Standard banner in docked bars stays collapsed until ready
+    if (widget.variant == TxAdSizeVariant.standardBanner) {
+      if (!_isAdLoaded || _bannerAd == null) {
+        return const SizedBox.shrink();
+      }
+    } else {
+      // In-feed medium rectangle collapses only on failure
+      if (!_isAdLoaded && !_isLoading) {
+        return const SizedBox.shrink();
+      }
     }
 
     final colors = Theme.of(context).extension<TxColorScheme>()!;
@@ -134,7 +147,7 @@ class _TxNativeAdCardState extends State<TxNativeAdCard> {
             horizontal: TxSpacing.lg,
             vertical: TxSpacing.sm,
           ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: TxRadius.borderRadiusMd,
@@ -188,24 +201,21 @@ class _TxNativeAdCardState extends State<TxNativeAdCard> {
             ],
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
-          // Ad Canvas or Loading Shimmer
-          if (_isAdLoaded && _bannerAd != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+          // Ad Canvas wrapped in FittedBox to avoid any overflow
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
               child: SizedBox(
                 width: _bannerAd!.size.width.toDouble(),
                 height: _bannerAd!.size.height.toDouble(),
                 child: AdWidget(ad: _bannerAd!),
               ),
-            )
-          else
-            // Loading shimmer skeleton
-            _AdLoadingSkeleton(
-              variant: widget.variant,
-              colors: colors,
             ),
+          ),
         ],
       ),
     );
