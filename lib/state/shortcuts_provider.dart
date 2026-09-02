@@ -114,11 +114,12 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     ];
   }
 
-  /// Adds a shortcut if a shortcut with the same domain or exact URL does not already exist.
+  /// Adds a shortcut at the top (position 0) if a shortcut with the same domain or exact URL does not already exist.
   Future<bool> addShortcutIfNotExists({
     required String label,
     required String url,
     String? faviconUrl,
+    bool insertAtTop = true,
   }) async {
     final targetHost =
         Uri.tryParse(url)?.host.toLowerCase().replaceAll('www.', '') ??
@@ -137,6 +138,38 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
 
     if (alreadyExists) {
       return false;
+    }
+
+    if (insertAtTop) {
+      final id = _uuid.v4();
+      final newShortcut = ShortcutModel(
+        id: id,
+        label: label,
+        url: url,
+        faviconUrl: faviconUrl,
+        position: 0,
+      );
+
+      // Shift existing shortcuts down by 1 position
+      for (var i = 0; i < state.length; i++) {
+        final existing = state[i];
+        existing.position = i + 1;
+        await _db.updateShortcut(ShortcutsCompanion(
+          id: Value(existing.id),
+          position: Value(existing.position),
+        ));
+      }
+
+      await _db.insertShortcut(ShortcutsCompanion.insert(
+        id: id,
+        label: label,
+        url: url,
+        faviconUrl: Value(faviconUrl),
+        position: const Value(0),
+      ));
+
+      state = [newShortcut, ...state];
+      return true;
     }
 
     await addShortcut(
