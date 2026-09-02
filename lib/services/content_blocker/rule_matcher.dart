@@ -71,6 +71,10 @@ class RuleMatcher {
   final Set<String> _customBlockedDomains = <String>{};
   final Set<String> _allowlistedDomains = <String>{};
 
+  Set<String> get adDomains => UnmodifiableSetView(_adDomains);
+  Set<String> get trackerDomains => UnmodifiableSetView(_trackerDomains);
+  Set<String> get malwareDomains => UnmodifiableSetView(_malwareDomains);
+
   // URL Path, Query & Substring Patterns (lowercase)
   final List<String> _adPathPatterns = <String>[];
   final List<String> _trackerPathPatterns = <String>[];
@@ -312,11 +316,11 @@ class RuleMatcher {
   /// Checks if any parent domain of [host] matches a rule in [set].
   String? _matchesDomainSuffix(String host, Set<String> set) {
     final parts = host.split('.');
-    if (parts.length <= 2) return null;
+    if (parts.length <= 1) return null;
 
-    for (var i = 1; i < parts.length - 1; i++) {
+    for (var i = 1; i < parts.length; i++) {
       final candidate = parts.sublist(i).join('.');
-      if (set.contains(candidate)) {
+      if (candidate.length >= 4 && set.contains(candidate)) {
         return candidate;
       }
     }
@@ -518,6 +522,95 @@ class RuleMatcher {
       'xml.adcash.com',
       'cdn.adcash.com',
       'rtb.adcash.com',
+
+      // High-Frequency Popunder, Push, Vignette & Video Ad Hosts (EasyList / AdGuard)
+      'highcpmgate.com',
+      'highcpmrevenuenetwork.com',
+      'highperformancegate.com',
+      'highcpmnetwork.com',
+      'h1ghcpm.com',
+      'onclickalgo.com',
+      'onclickperformance.com',
+      'onclicksuper.com',
+      'ontag.com',
+      'ontagcdn.com',
+      'wpadmngr.com',
+      'wpush.biz',
+      'propush.me',
+      'pushub.net',
+      'evadav.com',
+      'clickadu.net',
+      'ad-score.com',
+      'ad-delivery.net',
+      'bswsrv.com',
+      'exosrv.com',
+      'twinrdsrv.com',
+      'hilltopads.net',
+      'gammacdn.com',
+      'adthrive.com',
+      'raptive.com',
+      'mediavine.com',
+      'freestar.com',
+      'snigel.com',
+      'ezoic.com',
+      'ezoic.net',
+      'sulvo.com',
+      'monumetric.com',
+      'buyhitsfast.com',
+      'trafficmonsoon.com',
+      'adsterra.top',
+      'adsterra.one',
+      'adsterra.xyz',
+      'adsterra.site',
+      'adsterra.live',
+      'popcash.org',
+      'popcash.xyz',
+      'popcash.live',
+      'popads.org',
+      'popads.live',
+      'monetag.net',
+      'monetag.xyz',
+      'monetag.org',
+      'monetag.live',
+      'exoclick.net',
+      'exoclick.xyz',
+      'exoclick.org',
+      'exoclick.live',
+      'juicyads.net',
+      'juicyads.xyz',
+      'juicyads.org',
+      'juicyads.live',
+      'ad-maven.com',
+      'ad-maven.net',
+      'ad-maven.org',
+      'adtarget.net',
+      'adspirit.net',
+      'adnuntius.com',
+      'admanmedia.com',
+      'adotmob.com',
+      'aniview.com',
+      'springserve.com',
+      'vidazoo.com',
+      'undertone.com',
+      'primis.tech',
+      'connatix.com',
+      'brid.tv',
+      'anyclip.com',
+      'playstream.media',
+      'streamamp.com',
+      'targetspot.com',
+      'adhese.com',
+      'adhese.eu',
+      'adzerk.net',
+      'kevel.co',
+      'kevel.com',
+      'adition.com',
+      'smartstream.tv',
+      'insticator.com',
+      'snack-media.com',
+      'fuseplatform.net',
+      'yieldlove.com',
+      'showheroes.com',
     ]);
 
     // ─── 2. TRACKING, TELEMETRY & ANALYTICS DOMAINS ──────────────────
@@ -662,11 +755,14 @@ class RuleMatcher {
       '/adframe',
       '/adview',
       '/ads.js',
+      '/advert.js',
+      '/ads.min.js',
       '/prebid.js',
       'gpt.js',
       'show_ads.js',
       'fbevents.js',
       '/popunder.js',
+      '/popunder',
       '/pop.js',
       '/punder.js',
       '/direct-link?',
@@ -674,6 +770,19 @@ class RuleMatcher {
       'exoclick',
       'monetag',
       'hilltopads',
+      'propellerads',
+      'clickadu',
+      'deloton',
+      'highcpm',
+      'onclickalgo',
+      'onclickperformance',
+      'wpadmngr',
+      'zoneid=',
+      'ad_zone=',
+      'ad_unit=',
+      '/ad-delivery/',
+      '/ad-tag/',
+      '/vignette?',
     ]);
 
     _trackerPathPatterns.addAll([

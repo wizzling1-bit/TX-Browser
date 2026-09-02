@@ -102,73 +102,28 @@ class ContentBlockerService {
     if (!_isGlobalEnabled) return const [];
 
     final blockers = <ContentBlocker>[];
+    final allDomains = <String>{
+      ..._matcher.adDomains,
+      ..._matcher.trackerDomains,
+      ..._matcher.malwareDomains,
+    };
 
-    // High-Frequency Native URL Filter Rules (C++ level)
-    final highFrequencyPatterns = [
-      '.*doubleclick\\.net.*',
-      '.*googlesyndication\\.com.*',
-      '.*adservice\\.google\\.com.*',
-      '.*googleadservices\\.com.*',
-      '.*google-analytics\\.com.*',
-      '.*amazon-adsystem\\.com.*',
-      '.*adnxs\\.com.*',
-      '.*criteo\\..*',
-      '.*pubmatic\\.com.*',
-      '.*rubiconproject\\.com.*',
-      '.*openx\\..*',
-      '.*taboola\\.com.*',
-      '.*outbrain\\.com.*',
-      '.*scorecardresearch\\.com.*',
-      '.*clarity\\.ms.*',
-      '.*hotjar\\.com.*',
-      '.*segment\\.(io|com).*',
-      '.*amplitude\\.com.*',
-      '.*mixpanel\\.com.*',
-      '.*branch\\.io.*',
-      '.*adjust\\.com.*',
-      '.*appsflyer\\.com.*',
-      '.*popads\\.net.*',
-      '.*propellerads\\.com.*',
-      '.*smartadserver\\.com.*',
-      '.*yieldmo\\.com.*',
-      '.*sharethrough\\.com.*',
-      '.*triplelift\\.com.*',
-      '.*sovrn\\.com.*',
-      '.*lijit\\.com.*',
-      '.*teads\\.tv.*',
-      '.*spotxchange\\.com.*',
-      '.*revcontent\\.com.*',
-      '.*mgid\\.com.*',
-      '.*media\\.net.*',
-      '.*exoclick\\.com.*',
-      '.*juicyads\\.com.*',
-      '.*adsterra\\..*',
-      '.*trafficjunky\\.com.*',
-      '.*trafficstars\\.com.*',
-      '.*adcash\\.com.*',
-      '.*onclickads\\.net.*',
-      '.*monetag\\.com.*',
-      '.*hilltopads\\.com.*',
-      '.*popcash\\.net.*',
-      '.*zeroredirect1\\.com.*',
-      '.*realsrv\\.com.*',
-      '.*tsyndicate.*',
-      '.*dtiserv.*',
-      '.*clickadu\\.com.*',
-      '.*admaven\\.com.*',
-    ];
-
-    for (final pattern in highFrequencyPatterns) {
-      blockers.add(
-        ContentBlocker(
-          trigger: ContentBlockerTrigger(
-            urlFilter: pattern,
+    final seenPatterns = <String>{};
+    for (final domain in allDomains) {
+      final escaped = RegExp.escape(domain);
+      final pattern = '.*$escaped.*';
+      if (seenPatterns.add(pattern)) {
+        blockers.add(
+          ContentBlocker(
+            trigger: ContentBlockerTrigger(
+              urlFilter: pattern,
+            ),
+            action: ContentBlockerAction(
+              type: ContentBlockerActionType.BLOCK,
+            ),
           ),
-          action: ContentBlockerAction(
-            type: ContentBlockerActionType.BLOCK,
-          ),
-        ),
-      );
+        );
+      }
     }
 
     // Native Cosmetic CSS Display None Selector
@@ -198,6 +153,9 @@ class ContentBlockerService {
       '.ad-container, '
       '.ad-wrapper, '
       '.ad-slot, '
+      '.ad-box, '
+      '.ad-zone, '
+      '.ad_unit, '
       '.advertisement, '
       '.sponsored-post, '
       'div[class*="floating-ad"], '
@@ -209,6 +167,8 @@ class ContentBlockerService {
       'div[class*="sticky_ad"], '
       'div[class*="popup-ad"], '
       'div[id*="popup-ad"], '
+      'div[class*="popup_ad"], '
+      'div[id*="popup_ad"], '
       'div[class*="popunder"], '
       'div[id*="popunder"], '
       'div[class*="overlay-ad"], '
@@ -220,14 +180,27 @@ class ContentBlockerService {
       'div[class*="modal_ad"], '
       'div[id*="modal_ad"], '
       'div[class*="banner_ad"], '
+      'div[class*="native-ad"], '
+      'div[id*="native-ad"], '
+      'div[id^="ad_"], '
+      'div[class^="ad_"], '
       'div[id*="exo_"], '
       'div[class*="exo_"], '
       'div[id*="juicy_"], '
       'div[class*="juicy_"], '
+      'a[href*="highcpm"], '
+      'a[href*="onclick"], '
+      'a[href*="adsterra"], '
+      'a[href*="exoclick"], '
+      'a[href*="juicyads"], '
+      'a[href*="monetag"], '
+      'a[href*="clickadu"], '
+      'a[href*="deloton"], '
       'iframe[src*="exoclick"], '
       'iframe[src*="juicyads"], '
       'iframe[src*="adsterra"], '
       'iframe[src*="doubleclick"], '
+      'iframe[src*="adservice"], '
       '#taboola-below-article-thumbnails, '
       '#outbrain_widget_0, '
       '.trc_rbox_div, '
@@ -333,8 +306,14 @@ class ContentBlockerService {
         // ── 3. Dynamic DOM Overlay & Invisible Click Trap Cleaner ──
         function cleanOverlaysAndClickTraps() {
           try {
-            // Find full-screen transparent click traps (z-index > 9000 with 0 opacity or 100vw/100vh)
-            const allElements = document.querySelectorAll('div, section, aside, span');
+            // Collapse ad iframes and known ad anchor wrappers immediately
+            const adIframes = document.querySelectorAll('iframe[src*="doubleclick"], iframe[src*="exoclick"], iframe[src*="juicyads"], iframe[src*="adsterra"], iframe[src*="adservice"], iframe[src*="realsrv"], iframe[src*="tsyndicate"], iframe[src*="adcash"], iframe[src*="popads"], iframe[src*="monetag"], iframe[src*="clickadu"], iframe[src*="highcpm"], iframe[src*="wpadmngr"], iframe[src*="onclick"]');
+            for (let i = 0; i < adIframes.length; i++) {
+              adIframes[i].remove();
+            }
+
+            // Find full-screen transparent click traps and popunder triggers
+            const allElements = document.querySelectorAll('div, section, aside, span, a');
             for (let i = 0; i < allElements.length; i++) {
               const el = allElements[i];
               // Never touch video player or audio containers
@@ -342,12 +321,20 @@ class ContentBlockerService {
                 continue;
               }
 
+              if (el.tagName === 'A' && el.href) {
+                const h = el.href.toLowerCase();
+                if (h.includes('highcpm') || h.includes('onclickalgo') || h.includes('adsterra') || h.includes('exoclick') || h.includes('monetag') || h.includes('clickadu') || h.includes('deloton') || h.includes('wpush') || h.includes('propush') || h.includes('hilltopads')) {
+                  el.remove();
+                  continue;
+                }
+              }
+
               const style = window.getComputedStyle(el);
               const zIndex = parseInt(style.zIndex, 10);
               const isFixed = style.position === 'fixed' || style.position === 'absolute';
 
-              if (isFixed && zIndex > 9999) {
-                const isFullScreen = (el.offsetWidth >= window.innerWidth * 0.95 && el.offsetHeight >= window.innerHeight * 0.95);
+              if (isFixed && zIndex > 999) {
+                const isFullScreen = (el.offsetWidth >= window.innerWidth * 0.90 && el.offsetHeight >= window.innerHeight * 0.90);
                 const isTransparent = parseFloat(style.opacity) === 0 || style.backgroundColor === 'transparent' || style.backgroundColor === 'rgba(0, 0, 0, 0)';
 
                 // Remove transparent click catchers
@@ -357,7 +344,6 @@ class ContentBlockerService {
                 }
 
                 // Check for floating ad card overlays containing ad banners / promo texts
-                const text = el.innerText || '';
                 const html = el.innerHTML || '';
                 if (
                   html.includes('doubleclick') ||
@@ -367,7 +353,9 @@ class ContentBlockerService {
                   html.includes('adcash') ||
                   html.includes('monetag') ||
                   html.includes('popads') ||
-                  (el.className && typeof el.className === 'string' && (el.className.includes('ad-') || el.className.includes('overlay_ad') || el.className.includes('pop_ad')))
+                  html.includes('highcpm') ||
+                  html.includes('onclick') ||
+                  (el.className && typeof el.className === 'string' && (el.className.includes('ad-') || el.className.includes('overlay_ad') || el.className.includes('pop_ad') || el.className.includes('floating_ad') || el.className.includes('banner_ad')))
                 ) {
                   el.style.display = 'none';
                   el.style.visibility = 'hidden';
@@ -399,7 +387,7 @@ class ContentBlockerService {
             cleanupTimer = setTimeout(function() {
               cleanOverlaysAndClickTraps();
               cleanupTimer = null;
-            }, 350);
+            }, 100);
           }
         });
 
@@ -442,6 +430,7 @@ class ContentBlockerService {
     return UserScript(
       source: jsSource,
       injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+      forMainFrameOnly: false,
     );
   }
 }
