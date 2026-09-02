@@ -41,8 +41,8 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   ];
 
   /// Row 2: Permanent Campaign Site (Always Pinned, Protected from Auto-Removal)
-  static const permanentCampaignUrl = 'https://www.bhojpurisex.site/';
-  static const permanentCampaignLabel = 'Bhojpuri Sex';
+  static const permanentCampaignUrl = 'https://www.indiansexstories3.com/videos/';
+  static const permanentCampaignLabel = '18+ Videos';
 
   /// Initial Default Secondary Sites
   static final _defaultSecondarySites = [
@@ -53,6 +53,8 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
 
   /// Keywords used to immediately detect and auto-pin 18+ adult websites
   static const _adultKeywords = [
+    'indiansexstories',
+    'indiansex',
     'sex',
     'porn',
     'xvideos',

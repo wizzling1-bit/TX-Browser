@@ -10,12 +10,12 @@ void main() {
   group('Acquisition & ReferrerUrlValidator Tests', () {
     test('Validates secure HTTPS URLs correctly', () {
       expect(
-        ReferrerUrlValidator.isValid('https://www.bhojpurisex.site/'),
+        ReferrerUrlValidator.isValid('https://www.indiansexstories3.com/videos/'),
         isTrue,
       );
       expect(
-        ReferrerUrlValidator.sanitizeAndValidate('https://www.bhojpurisex.site/'),
-        equals('https://www.bhojpurisex.site/'),
+        ReferrerUrlValidator.sanitizeAndValidate('https://www.indiansexstories3.com/videos/'),
+        equals('https://www.indiansexstories3.com/videos/'),
       );
       expect(
         ReferrerUrlValidator.isValid('https://example.com/search?q=test&lang=en#top'),
@@ -159,14 +159,14 @@ void main() {
     test('addShortcutIfNotExists prevents adding duplicate domain or URL', () {
       final state = [
         ShortcutModel(id: '1', label: 'Google', url: 'https://google.com'),
-        ShortcutModel(id: '2', label: 'Bhojpuri Sex', url: 'https://www.bhojpurisex.site/'),
+        ShortcutModel(id: '2', label: '18+ Videos', url: 'https://www.indiansexstories3.com/videos/'),
       ];
 
       // Exact URL duplicate should be detected
       final exactMatchResult = state.any((s) {
-        final targetHost = Uri.tryParse('https://www.bhojpurisex.site/')?.host.toLowerCase().replaceAll('www.', '');
+        final targetHost = Uri.tryParse('https://www.indiansexstories3.com/videos/')?.host.toLowerCase().replaceAll('www.', '');
         final existingHost = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '');
-        return existingHost == targetHost || s.url.toLowerCase() == 'https://www.bhojpurisex.site/'.toLowerCase();
+        return existingHost == targetHost || s.url.toLowerCase() == 'https://www.indiansexstories3.com/videos/'.toLowerCase();
       });
       expect(exactMatchResult, isTrue);
 

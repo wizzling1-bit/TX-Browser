@@ -46,6 +46,10 @@ class BrandIconBadge extends StatelessWidget {
   }
 
   Color _getBgColor(String key, bool isDark) {
+    if (key.contains('18') || key.contains('sex') || key.contains('porn') || key.contains('adult') || key.contains('bhojpuri')) {
+      return Colors.white;
+    }
+
     if (isDark) {
       switch (key) {
         case 'figma':
@@ -71,6 +75,10 @@ class BrandIconBadge extends StatelessWidget {
   }
 
   Color _getBorderColor(String key, bool isDark) {
+    if (key.contains('18') || key.contains('sex') || key.contains('porn') || key.contains('adult') || key.contains('bhojpuri')) {
+      return const Color(0xFFFF2A4D).withValues(alpha: 0.3);
+    }
+
     if (isDark) {
       return const Color(0xFF263228);
     }
@@ -89,6 +97,15 @@ class BrandIconBadge extends StatelessWidget {
   Widget _buildIconContent(String key, bool isDark, Color primaryColor) {
     final iconSize = size * 0.52;
 
+    if (key.contains('18') ||
+        key.contains('sex') ||
+        key.contains('porn') ||
+        key.contains('adult') ||
+        key.contains('bhojpuri') ||
+        key.contains('indiansexstories')) {
+      return _Adult18Logo(size: size * 0.95);
+    }
+
     switch (key) {
       case 'google':
         return _GoogleLogo(size: iconSize);
@@ -105,11 +122,6 @@ class BrandIconBadge extends StatelessWidget {
         return _GitHubLogo(size: iconSize, isDark: isDark);
       case 'dribbble':
         return _DribbbleLogo(size: iconSize);
-      case 'bhojpuri sex':
-      case 'bhojpurisex':
-      case 'bhojpuri':
-      case '18+':
-        return _Adult18Logo(size: iconSize);
       case 'figma':
         return _FigmaLogo(size: iconSize);
       case 'unsplash':
@@ -136,26 +148,64 @@ class _Adult18Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size * 1.1,
-      height: size * 0.9,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFF3366), Color(0xFFFF5E3A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      alignment: Alignment.center,
-      child: const Text(
-        '18+',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -0.5,
-        ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.18),
+      child: Image.asset(
+        'assets/icons/ic_18plus.png',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: size,
+            height: size,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: size * 0.9,
+                  height: size * 0.9,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFFF2A4D),
+                      width: size * 0.12,
+                    ),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '18+',
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: size * 0.36,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                      ),
+                    ),
+                    Text(
+                      'ONLY',
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: size * 0.18,
+                        fontWeight: FontWeight.w800,
+                        height: 1.0,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
