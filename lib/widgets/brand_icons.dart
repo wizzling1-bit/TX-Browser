@@ -105,6 +105,11 @@ class BrandIconBadge extends StatelessWidget {
         return _GitHubLogo(size: iconSize, isDark: isDark);
       case 'dribbble':
         return _DribbbleLogo(size: iconSize);
+      case 'bhojpuri sex':
+      case 'bhojpurisex':
+      case 'bhojpuri':
+      case '18+':
+        return _Adult18Logo(size: iconSize);
       case 'figma':
         return _FigmaLogo(size: iconSize);
       case 'unsplash':
@@ -122,6 +127,37 @@ class BrandIconBadge extends StatelessWidget {
           ),
         );
     }
+  }
+}
+
+class _Adult18Logo extends StatelessWidget {
+  const _Adult18Logo({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size * 1.1,
+      height: size * 0.9,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF3366), Color(0xFFFF5E3A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      alignment: Alignment.center,
+      child: const Text(
+        '18+',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.5,
+        ),
+      ),
+    );
   }
 }
 

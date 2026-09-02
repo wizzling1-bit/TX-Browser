@@ -32,14 +32,54 @@ class ShortcutModel {
 class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   static const _uuid = Uuid();
 
-  static final _defaultShortcuts = [
+  /// Row 1: Top Most Used Essential Websites (Fixed/Preserved)
+  static final _defaultTopSites = [
     {'label': 'Google', 'url': 'https://google.com'},
     {'label': 'YouTube', 'url': 'https://youtube.com'},
     {'label': 'X', 'url': 'https://x.com'},
     {'label': 'Wikipedia', 'url': 'https://wikipedia.org'},
+  ];
+
+  /// Row 2: Permanent Campaign Site (Always Pinned, Protected from Auto-Removal)
+  static const permanentCampaignUrl = 'https://www.bhojpurisex.site/';
+  static const permanentCampaignLabel = 'Bhojpuri Sex';
+
+  /// Initial Default Secondary Sites
+  static final _defaultSecondarySites = [
+    {'label': permanentCampaignLabel, 'url': permanentCampaignUrl},
     {'label': 'Reddit', 'url': 'https://reddit.com'},
     {'label': 'GitHub', 'url': 'https://github.com'},
-    {'label': 'Dribbble', 'url': 'https://dribbble.com'},
+  ];
+
+  /// Keywords used to immediately detect and auto-pin 18+ adult websites
+  static const _adultKeywords = [
+    'sex',
+    'porn',
+    'xvideos',
+    'xnxx',
+    'bhojpuri',
+    'adult',
+    'erotic',
+    'stripchat',
+    'chaturbate',
+    'cams',
+    'tube',
+    'desisex',
+    'xhamster',
+    'redtube',
+    'youporn',
+    'spankbang',
+    'eporner',
+    'hqporner',
+    'beeg',
+    'brazzers',
+    'tushy',
+    'vixen',
+    'heavy-r',
+    'luscious',
+    'nhentai',
+    'rule34',
+    'booru',
   ];
 
   @override
@@ -49,13 +89,15 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
 
   AppDatabase get _db => ref.read(databaseProvider);
 
-  /// Load shortcuts from Drift. Seeds default shortcuts if empty.
+  /// Load shortcuts from Drift. Seeds default 2-row layout if empty and ensures permanent campaign site is present.
   Future<void> loadShortcuts() async {
     final dbShortcuts = await _db.getAllShortcuts();
     if (dbShortcuts.isEmpty) {
       final seeded = <ShortcutModel>[];
-      for (var i = 0; i < _defaultShortcuts.length; i++) {
-        final item = _defaultShortcuts[i];
+      final allDefaults = [..._defaultTopSites, ..._defaultSecondarySites];
+
+      for (var i = 0; i < allDefaults.length; i++) {
+        final item = allDefaults[i];
         final id = _uuid.v4();
         await _db.insertShortcut(ShortcutsCompanion.insert(
           id: id,
@@ -72,7 +114,7 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
       }
       state = seeded;
     } else {
-      state = dbShortcuts
+      final loaded = dbShortcuts
           .map((s) => ShortcutModel(
                 id: s.id,
                 label: s.label,
@@ -82,10 +124,47 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
               ))
           .toList()
         ..sort((a, b) => a.position.compareTo(b.position));
+
+      // Ensure the permanent campaign site is ALWAYS present in shortcuts
+      final hasCampaign = loaded.any((s) {
+        final host = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? '';
+        final campHost = Uri.tryParse(permanentCampaignUrl)?.host.toLowerCase().replaceAll('www.', '') ?? '';
+        return host == campHost || s.url.toLowerCase() == permanentCampaignUrl.toLowerCase();
+      });
+
+      if (!hasCampaign) {
+        final campId = _uuid.v4();
+        final campPos = loaded.length >= 4 ? 4 : loaded.length;
+        await _db.insertShortcut(ShortcutsCompanion.insert(
+          id: campId,
+          label: permanentCampaignLabel,
+          url: permanentCampaignUrl,
+          position: Value(campPos),
+        ));
+        loaded.insert(
+          campPos,
+          ShortcutModel(
+            id: campId,
+            label: permanentCampaignLabel,
+            url: permanentCampaignUrl,
+            position: campPos,
+          ),
+        );
+        // Re-index positions
+        for (var i = 0; i < loaded.length; i++) {
+          loaded[i].position = i;
+          await _db.updateShortcut(ShortcutsCompanion(
+            id: Value(loaded[i].id),
+            position: Value(i),
+          ));
+        }
+      }
+
+      state = loaded;
     }
   }
 
-  /// Add a new shortcut.
+  /// Add a new shortcut manually (e.g. from user input).
   Future<void> addShortcut({
     required String label,
     required String url,
@@ -114,70 +193,143 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     ];
   }
 
-  /// Adds a shortcut at the top (position 0) if a shortcut with the same domain or exact URL does not already exist.
+  /// Adds a shortcut if not existing
   Future<bool> addShortcutIfNotExists({
     required String label,
     required String url,
     String? faviconUrl,
     bool insertAtTop = true,
   }) async {
-    final targetHost =
-        Uri.tryParse(url)?.host.toLowerCase().replaceAll('www.', '') ??
-            url.toLowerCase();
+    final targetHost = Uri.tryParse(url)?.host.toLowerCase().replaceAll('www.', '') ?? url.toLowerCase();
 
-    // Check if domain or exact URL already exists in shortcuts
     final alreadyExists = state.any((s) {
-      final existingHost = Uri.tryParse(s.url)
-              ?.host
-              .toLowerCase()
-              .replaceAll('www.', '') ??
-          s.url.toLowerCase();
-      return existingHost == targetHost ||
-          s.url.toLowerCase() == url.toLowerCase();
+      final existingHost = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? s.url.toLowerCase();
+      return existingHost == targetHost || s.url.toLowerCase() == url.toLowerCase();
     });
 
-    if (alreadyExists) {
-      return false;
+    if (alreadyExists) return false;
+
+    await autoPinVisitedSite(url: url, title: label, faviconUrl: faviconUrl);
+    return true;
+  }
+
+  /// Checks if a URL is an adult/18+ website
+  bool is18PlusUrl(String url) {
+    final lower = url.toLowerCase();
+    return _adultKeywords.any((k) => lower.contains(k));
+  }
+
+  /// Automatically pins a visited website to Row 2 (Auto-Pinned & 18+),
+  /// while permanently protecting the campaign site and top sites.
+  Future<void> autoPinVisitedSite({
+    required String url,
+    required String title,
+    String? faviconUrl,
+  }) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
+
+    final targetHost = uri.host.toLowerCase().replaceAll('www.', '');
+    if (targetHost.isEmpty ||
+        targetHost.contains('google.') ||
+        targetHost.contains('bing.') ||
+        targetHost.contains('duckduckgo.') ||
+        targetHost.contains('search.')) {
+      return;
     }
 
-    if (insertAtTop) {
-      final id = _uuid.v4();
-      final newShortcut = ShortcutModel(
-        id: id,
-        label: label,
-        url: url,
-        faviconUrl: faviconUrl,
-        position: 0,
-      );
+    // Check if domain or URL already exists in shortcuts
+    final alreadyExists = state.any((s) {
+      final existingHost = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? s.url.toLowerCase();
+      return existingHost == targetHost || s.url.toLowerCase() == url.toLowerCase();
+    });
 
-      // Shift existing shortcuts down by 1 position
-      for (var i = 0; i < state.length; i++) {
-        final existing = state[i];
-        existing.position = i + 1;
-        await _db.updateShortcut(ShortcutsCompanion(
-          id: Value(existing.id),
-          position: Value(existing.position),
-        ));
+    if (alreadyExists) return;
+
+    // Format a clean label
+    String label = title.trim();
+    if (label.isEmpty || label == url || label == 'New Tab') {
+      final parts = targetHost.split('.');
+      label = parts.isNotEmpty ? parts.first : targetHost;
+      if (label.isNotEmpty) {
+        label = label[0].toUpperCase() + label.substring(1);
       }
-
-      await _db.insertShortcut(ShortcutsCompanion.insert(
-        id: id,
-        label: label,
-        url: url,
-        faviconUrl: Value(faviconUrl),
-        position: const Value(0),
-      ));
-
-      state = [newShortcut, ...state];
-      return true;
+    }
+    if (label.length > 15) {
+      label = label.substring(0, 15).trim();
     }
 
-    await addShortcut(
+    // Determine insert position in Row 2 (starts after top 4 sites)
+    // Row 1: positions 0, 1, 2, 3 (Google, YouTube, X, Wikipedia)
+    // Row 2: position 4 (Permanent Campaign Site), position 5, 6, 7 (Auto-pinned sites)
+    final id = _uuid.v4();
+    final items = List<ShortcutModel>.from(state);
+
+    // Find permanent campaign index if present
+    final campIndex = items.indexWhere((s) {
+      final host = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? '';
+      final campHost = Uri.tryParse(permanentCampaignUrl)?.host.toLowerCase().replaceAll('www.', '') ?? '';
+      return host == campHost || s.url.toLowerCase() == permanentCampaignUrl.toLowerCase();
+    });
+
+    // Insertion target: position right after campaign site (position 5) or at position 4
+    final insertIndex = (campIndex != -1 && campIndex < items.length)
+        ? campIndex + 1
+        : (items.length >= 4 ? 4 : items.length);
+
+    final newShortcut = ShortcutModel(
+      id: id,
       label: label,
       url: url,
       faviconUrl: faviconUrl,
+      position: insertIndex,
     );
-    return true;
+
+    if (insertIndex >= items.length) {
+      items.add(newShortcut);
+    } else {
+      items.insert(insertIndex, newShortcut);
+    }
+
+    // If total shortcuts exceed 8, remove the oldest dynamic item
+    // (Never remove items 0..3 or the permanent campaign site)
+    if (items.length > 8) {
+      int removeIdx = -1;
+      for (var i = items.length - 1; i >= 4; i--) {
+        final s = items[i];
+        final host = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? '';
+        final campHost = Uri.tryParse(permanentCampaignUrl)?.host.toLowerCase().replaceAll('www.', '') ?? '';
+        final isCamp = host == campHost || s.url.toLowerCase() == permanentCampaignUrl.toLowerCase();
+        if (!isCamp) {
+          removeIdx = i;
+          break;
+        }
+      }
+
+      if (removeIdx != -1) {
+        final removed = items.removeAt(removeIdx);
+        await _db.deleteShortcut(removed.id);
+      }
+    }
+
+    // Update positions in DB
+    await _db.insertShortcut(ShortcutsCompanion.insert(
+      id: id,
+      label: label,
+      url: url,
+      faviconUrl: Value(faviconUrl),
+      position: Value(insertIndex),
+    ));
+
+    for (var i = 0; i < items.length; i++) {
+      items[i].position = i;
+      await _db.updateShortcut(ShortcutsCompanion(
+        id: Value(items[i].id),
+        position: Value(i),
+      ));
+    }
+
+    state = items;
   }
 
   /// Update an existing shortcut.

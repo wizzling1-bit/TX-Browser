@@ -23,6 +23,7 @@ import '../../state/downloads_provider.dart';
 import '../../state/bookmarks_provider.dart';
 import '../../state/shield_provider.dart';
 import '../../state/site_permissions_provider.dart';
+import '../../state/shortcuts_provider.dart';
 import '../../widgets/omnibox/omnibox.dart';
 import '../../widgets/loading_bar.dart';
 import '../../widgets/bottom_nav_bar.dart';
@@ -124,6 +125,11 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
             faviconUrl: favicon,
           );
       ref.read(adServiceProvider).recordUserAction();
+      ref.read(shortcutsProvider.notifier).autoPinVisitedSite(
+            url: targetUrl,
+            title: effectiveTitle,
+            faviconUrl: favicon,
+          );
     } catch (_) {}
   }
 
