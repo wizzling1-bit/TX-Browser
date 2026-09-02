@@ -12,7 +12,7 @@ class SearchService {
   ///
   /// If [input] looks like a URL, normalizes and returns it.
   /// Otherwise, wraps it in the [engine]'s search URL template.
-  String resolve(String input, {SearchEngine engine = SearchEngine.duckDuckGo}) {
+  String resolve(String input, {SearchEngine engine = SearchEngine.google}) {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return engine.searchUrl('');
 

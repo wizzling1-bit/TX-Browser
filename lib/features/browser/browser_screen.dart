@@ -75,7 +75,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
   @override
   void initState() {
     super.initState();
-    _currentUrl = widget.initialUrl ?? 'https://duckduckgo.com';
+    _currentUrl = widget.initialUrl ?? 'https://www.google.com';
     _omniboxController.text = _currentUrl;
     _findInteractionController = FindInteractionController(
       onFindResultReceived: (controller, activeMatchOrdinal, numberOfMatches, isDoneCounting) {
@@ -827,6 +827,11 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
                         verticalScrollBarEnabled: true,
                         horizontalScrollBarEnabled: false,
                         overScrollMode: OverScrollMode.IF_CONTENT_SCROLLS,
+                        useWideViewPort: true,
+                        loadWithOverviewMode: true,
+                        offscreenPreRaster: true,
+                        safeBrowsingEnabled: true,
+                        clearCache: false,
                         contentBlockers: ref.read(shieldProvider.notifier).service.generateNativeBlockers(),
                       ),
                       initialUserScripts: UnmodifiableListView([

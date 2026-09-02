@@ -27,7 +27,7 @@ class SettingsKeys {
 class AppSettings {
   const AppSettings({
     this.themeMode = ThemeMode.system,
-    this.searchEngine = SearchEngine.duckDuckGo,
+    this.searchEngine = SearchEngine.google,
     this.homepageMode = 'tx_home',
     this.desktopSiteDefault = false,
     this.onboardingComplete = false,

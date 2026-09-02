@@ -17,10 +17,10 @@ void main() {
       );
     });
 
-    test('resolves search queries via DuckDuckGo by default', () {
+    test('resolves search queries via Google by default', () {
       expect(
         service.resolve('flutter state management'),
-        equals('https://duckduckgo.com/?q=flutter%20state%20management'),
+        equals('https://www.google.com/search?q=flutter%20state%20management'),
       );
     });
 

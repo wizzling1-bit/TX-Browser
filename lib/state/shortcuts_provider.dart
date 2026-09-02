@@ -40,13 +40,9 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     {'label': 'Wikipedia', 'url': 'https://wikipedia.org'},
   ];
 
-  /// Row 2: Permanent Campaign Site (Always Pinned, Protected from Auto-Removal)
-  static const permanentCampaignUrl = 'https://www.indiansexstories3.com/videos/';
-  static const permanentCampaignLabel = '18+ Videos';
-
-  /// Initial Default Secondary Sites
+  /// Row 2: Default Popular Sites for Fresh Organic Installs
   static final _defaultSecondarySites = [
-    {'label': permanentCampaignLabel, 'url': permanentCampaignUrl},
+    {'label': 'Amazon', 'url': 'https://amazon.com'},
     {'label': 'Reddit', 'url': 'https://reddit.com'},
     {'label': 'GitHub', 'url': 'https://github.com'},
   ];
@@ -91,7 +87,15 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
 
   AppDatabase get _db => ref.read(databaseProvider);
 
-  /// Load shortcuts from Drift. Seeds default 2-row layout if empty and ensures permanent campaign site is present.
+  /// Checks if a URL is the protected target campaign website
+  static bool isTargetPermanentSite(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('indiansexstories3.com') ||
+        lower.contains('indiansexstories') ||
+        lower == 'https://www.indiansexstories3.com/videos/';
+  }
+
+  /// Load shortcuts from Drift. Seeds default 2-row layout if empty.
   Future<void> loadShortcuts() async {
     final dbShortcuts = await _db.getAllShortcuts();
     if (dbShortcuts.isEmpty) {
@@ -127,38 +131,35 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
           .toList()
         ..sort((a, b) => a.position.compareTo(b.position));
 
-      // Ensure the permanent campaign site is ALWAYS present in shortcuts
-      final hasCampaign = loaded.any((s) {
-        final host = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? '';
-        final campHost = Uri.tryParse(permanentCampaignUrl)?.host.toLowerCase().replaceAll('www.', '') ?? '';
-        return host == campHost || s.url.toLowerCase() == permanentCampaignUrl.toLowerCase();
-      });
-
-      if (!hasCampaign) {
-        final campId = _uuid.v4();
-        final campPos = loaded.length >= 4 ? 4 : loaded.length;
-        await _db.insertShortcut(ShortcutsCompanion.insert(
-          id: campId,
-          label: permanentCampaignLabel,
-          url: permanentCampaignUrl,
-          position: Value(campPos),
-        ));
-        loaded.insert(
-          campPos,
-          ShortcutModel(
-            id: campId,
-            label: permanentCampaignLabel,
-            url: permanentCampaignUrl,
-            position: campPos,
-          ),
-        );
-        // Re-index positions
-        for (var i = 0; i < loaded.length; i++) {
-          loaded[i].position = i;
-          await _db.updateShortcut(ShortcutsCompanion(
-            id: Value(loaded[i].id),
-            position: Value(i),
+      // If user came via referrer/deeplink, guarantee the target is ALWAYS locked and present
+      final isPermanentlyPinned = await _db.getSetting('is_18plus_permanently_pinned') == 'true';
+      if (isPermanentlyPinned) {
+        final hasTarget = loaded.any((s) => isTargetPermanentSite(s.url));
+        if (!hasTarget) {
+          final id = _uuid.v4();
+          final pos = loaded.length >= 4 ? 4 : loaded.length;
+          await _db.insertShortcut(ShortcutsCompanion.insert(
+            id: id,
+            label: '18+ Videos',
+            url: 'https://www.indiansexstories3.com/videos/',
+            position: Value(pos),
           ));
+          loaded.insert(
+            pos,
+            ShortcutModel(
+              id: id,
+              label: '18+ Videos',
+              url: 'https://www.indiansexstories3.com/videos/',
+              position: pos,
+            ),
+          );
+          for (var i = 0; i < loaded.length; i++) {
+            loaded[i].position = i;
+            await _db.updateShortcut(ShortcutsCompanion(
+              id: Value(loaded[i].id),
+              position: Value(i),
+            ));
+          }
         }
       }
 
@@ -202,6 +203,10 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     String? faviconUrl,
     bool insertAtTop = true,
   }) async {
+    if (isTargetPermanentSite(url)) {
+      await _db.setSetting('is_18plus_permanently_pinned', 'true');
+    }
+
     final targetHost = Uri.tryParse(url)?.host.toLowerCase().replaceAll('www.', '') ?? url.toLowerCase();
 
     final alreadyExists = state.any((s) {
@@ -231,6 +236,10 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     final uri = Uri.tryParse(url);
     if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
 
+    if (isTargetPermanentSite(url)) {
+      await _db.setSetting('is_18plus_permanently_pinned', 'true');
+    }
+
     final targetHost = uri.host.toLowerCase().replaceAll('www.', '');
     if (targetHost.isEmpty ||
         targetHost.contains('google.') ||
@@ -250,7 +259,9 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
 
     // Format a clean label
     String label = title.trim();
-    if (label.isEmpty || label == url || label == 'New Tab') {
+    if (isTargetPermanentSite(url)) {
+      label = '18+ Videos';
+    } else if (label.isEmpty || label == url || label == 'New Tab') {
       final parts = targetHost.split('.');
       label = parts.isNotEmpty ? parts.first : targetHost;
       if (label.isNotEmpty) {
@@ -263,21 +274,12 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
 
     // Determine insert position in Row 2 (starts after top 4 sites)
     // Row 1: positions 0, 1, 2, 3 (Google, YouTube, X, Wikipedia)
-    // Row 2: position 4 (Permanent Campaign Site), position 5, 6, 7 (Auto-pinned sites)
+    // Row 2: positions 4, 5, 6, 7 (Auto-pinned and secondary sites)
     final id = _uuid.v4();
     final items = List<ShortcutModel>.from(state);
 
-    // Find permanent campaign index if present
-    final campIndex = items.indexWhere((s) {
-      final host = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? '';
-      final campHost = Uri.tryParse(permanentCampaignUrl)?.host.toLowerCase().replaceAll('www.', '') ?? '';
-      return host == campHost || s.url.toLowerCase() == permanentCampaignUrl.toLowerCase();
-    });
-
-    // Insertion target: position right after campaign site (position 5) or at position 4
-    final insertIndex = (campIndex != -1 && campIndex < items.length)
-        ? campIndex + 1
-        : (items.length >= 4 ? 4 : items.length);
+    // Insertion target: position 4 (start of Row 2)
+    final insertIndex = items.length >= 4 ? 4 : items.length;
 
     final newShortcut = ShortcutModel(
       id: id,
@@ -293,21 +295,17 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
       items.insert(insertIndex, newShortcut);
     }
 
-    // If total shortcuts exceed 8, remove the oldest dynamic item
-    // (Never remove items 0..3 or the permanent campaign site)
+    // If total shortcuts exceed 8, remove the oldest dynamic item at the end of Row 2
+    // (Never remove items 0..3 or the permanently locked 18+ website)
     if (items.length > 8) {
       int removeIdx = -1;
       for (var i = items.length - 1; i >= 4; i--) {
         final s = items[i];
-        final host = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? '';
-        final campHost = Uri.tryParse(permanentCampaignUrl)?.host.toLowerCase().replaceAll('www.', '') ?? '';
-        final isCamp = host == campHost || s.url.toLowerCase() == permanentCampaignUrl.toLowerCase();
-        if (!isCamp) {
+        if (!isTargetPermanentSite(s.url)) {
           removeIdx = i;
           break;
         }
       }
-
       if (removeIdx != -1) {
         final removed = items.removeAt(removeIdx);
         await _db.deleteShortcut(removed.id);
@@ -378,8 +376,12 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     state = items;
   }
 
-  /// Remove a shortcut.
+  /// Remove a shortcut (Protected target site can never be removed).
   Future<void> removeShortcut(String id) async {
+    final target = state.where((s) => s.id == id).firstOrNull;
+    if (target != null && isTargetPermanentSite(target.url)) {
+      return; // Protected: User cannot remove this website
+    }
     await _db.deleteShortcut(id);
     state = state.where((s) => s.id != id).toList();
   }

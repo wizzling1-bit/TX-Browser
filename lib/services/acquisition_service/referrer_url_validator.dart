@@ -57,6 +57,21 @@ class ReferrerUrlValidator {
       return null;
     }
 
+    // Support custom txbrowser:// deep link scheme with url/target_url parameters
+    if (scheme == 'txbrowser') {
+      final paramUrl = uri.queryParameters['url'] ??
+          uri.queryParameters['target_url'] ??
+          uri.queryParameters['destination'];
+      if (paramUrl != null && paramUrl.isNotEmpty) {
+        return sanitizeAndValidate(paramUrl);
+      }
+      final rawPath = uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
+      final fullPath = uri.host.isNotEmpty ? '${uri.host}/$rawPath' : rawPath;
+      if (fullPath.startsWith('http://') || fullPath.startsWith('https://')) {
+        return sanitizeAndValidate(fullPath);
+      }
+    }
+
     if (!_allowedSchemes.contains(scheme)) {
       return null;
     }

@@ -1,19 +1,19 @@
 /// Search engine definitions for Tx Browser.
 ///
-/// DuckDuckGo is the default. Users can change via Settings.
+/// Google is the default. Users can change via Settings.
 /// See PRD §6.1.
 library;
 
 enum SearchEngine {
-  duckDuckGo(
-    name: 'DuckDuckGo',
-    urlTemplate: 'https://duckduckgo.com/?q={query}',
-    iconAsset: 'duckduckgo',
-  ),
   google(
     name: 'Google',
     urlTemplate: 'https://www.google.com/search?q={query}',
     iconAsset: 'google',
+  ),
+  duckDuckGo(
+    name: 'DuckDuckGo',
+    urlTemplate: 'https://duckduckgo.com/?q={query}',
+    iconAsset: 'duckduckgo',
   ),
   bing(
     name: 'Bing',
@@ -44,12 +44,12 @@ enum SearchEngine {
     );
   }
 
-  /// Finds a [SearchEngine] by its name, or returns [duckDuckGo] as default.
+  /// Finds a [SearchEngine] by its name, or returns [google] as default.
   static SearchEngine fromName(String? name) {
-    if (name == null) return SearchEngine.duckDuckGo;
+    if (name == null) return SearchEngine.google;
     return SearchEngine.values.firstWhere(
       (e) => e.name == name,
-      orElse: () => SearchEngine.duckDuckGo,
+      orElse: () => SearchEngine.google,
     );
   }
 }

@@ -279,7 +279,7 @@ class _VoiceSearchSheetState extends State<VoiceSearchSheet>
                 ? 'Try saying "wikipedia.org" or "latest space news"'
                 : (_errorMessage != null
                     ? 'Tap the microphone icon to retry'
-                    : 'Searching DuckDuckGo'),
+                    : 'Searching Google'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colors.textSecondary,
