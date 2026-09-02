@@ -86,6 +86,35 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   }
 
   AppDatabase get _db => ref.read(databaseProvider);
+  final Set<String> _inFlightHosts = <String>{};
+
+  /// Extracts the base domain without www
+  static String canonicalHost(String url) {
+    try {
+      final uri = Uri.parse(url);
+      var host = uri.host.toLowerCase();
+      if (host.startsWith('www.')) host = host.substring(4);
+      return host.isNotEmpty ? host : url.toLowerCase();
+    } catch (_) {
+      return url.toLowerCase();
+    }
+  }
+
+  /// Normalizes to the main root URL of the website
+  static String canonicalUrl(String url) {
+    if (isTargetPermanentSite(url)) {
+      return 'https://www.indiansexstories3.com/videos/';
+    }
+    try {
+      final uri = Uri.parse(url);
+      if (uri.scheme == 'http' || uri.scheme == 'https') {
+        return '${uri.scheme}://${uri.host}/';
+      }
+      return url;
+    } catch (_) {
+      return url;
+    }
+  }
 
   /// Checks if a URL is the protected target campaign website
   static bool isTargetPermanentSite(String url) {
@@ -95,7 +124,7 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
         lower == 'https://www.indiansexstories3.com/videos/';
   }
 
-  /// Load shortcuts from Drift. Seeds default 2-row layout if empty.
+  /// Load shortcuts from Drift. Seeds default 2-row layout if empty and cleans up any duplicates.
   Future<void> loadShortcuts() async {
     final dbShortcuts = await _db.getAllShortcuts();
     if (dbShortcuts.isEmpty) {
@@ -120,7 +149,7 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
       }
       state = seeded;
     } else {
-      final loaded = dbShortcuts
+      final rawLoaded = dbShortcuts
           .map((s) => ShortcutModel(
                 id: s.id,
                 label: s.label,
@@ -131,7 +160,20 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
           .toList()
         ..sort((a, b) => a.position.compareTo(b.position));
 
-      // If user came via referrer/deeplink, guarantee the target is ALWAYS locked and present
+      // 1. Clean up & deduplicate duplicate domain entries in DB
+      final seenHosts = <String>{};
+      final loaded = <ShortcutModel>[];
+      for (final s in rawLoaded) {
+        final host = canonicalHost(s.url);
+        if (seenHosts.add(host)) {
+          loaded.add(s);
+        } else {
+          // Delete duplicate button entry from DB
+          await _db.deleteShortcut(s.id);
+        }
+      }
+
+      // 2. If user came via referrer/deeplink, guarantee the target is ALWAYS locked and present
       final isPermanentlyPinned = await _db.getSetting('is_18plus_permanently_pinned') == 'true';
       if (isPermanentlyPinned) {
         final hasTarget = loaded.any((s) => isTargetPermanentSite(s.url));
@@ -153,14 +195,16 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
               position: pos,
             ),
           );
-          for (var i = 0; i < loaded.length; i++) {
-            loaded[i].position = i;
-            await _db.updateShortcut(ShortcutsCompanion(
-              id: Value(loaded[i].id),
-              position: Value(i),
-            ));
-          }
         }
+      }
+
+      // Re-index positions
+      for (var i = 0; i < loaded.length; i++) {
+        loaded[i].position = i;
+        await _db.updateShortcut(ShortcutsCompanion(
+          id: Value(loaded[i].id),
+          position: Value(i),
+        ));
       }
 
       state = loaded;
@@ -173,13 +217,18 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     required String url,
     String? faviconUrl,
   }) async {
+    final host = canonicalHost(url);
+    final alreadyExists = state.any((s) => canonicalHost(s.url) == host);
+    if (alreadyExists) return;
+
     final id = _uuid.v4();
     final position = state.length;
+    final mainUrl = canonicalUrl(url);
 
     await _db.insertShortcut(ShortcutsCompanion.insert(
       id: id,
       label: label,
-      url: url,
+      url: mainUrl,
       faviconUrl: Value(faviconUrl),
       position: Value(position),
     ));
@@ -189,7 +238,7 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
       ShortcutModel(
         id: id,
         label: label,
-        url: url,
+        url: mainUrl,
         faviconUrl: faviconUrl,
         position: position,
       ),
@@ -207,12 +256,8 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
       await _db.setSetting('is_18plus_permanently_pinned', 'true');
     }
 
-    final targetHost = Uri.tryParse(url)?.host.toLowerCase().replaceAll('www.', '') ?? url.toLowerCase();
-
-    final alreadyExists = state.any((s) {
-      final existingHost = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? s.url.toLowerCase();
-      return existingHost == targetHost || s.url.toLowerCase() == url.toLowerCase();
-    });
+    final targetHost = canonicalHost(url);
+    final alreadyExists = state.any((s) => canonicalHost(s.url) == targetHost);
 
     if (alreadyExists) return false;
 
@@ -227,7 +272,7 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   }
 
   /// Automatically pins a visited website to Row 2 (Auto-Pinned & 18+),
-  /// while permanently protecting the campaign site and top sites.
+  /// saving ONLY the main root URL and never creating duplicate buttons.
   Future<void> autoPinVisitedSite({
     required String url,
     required String title,
@@ -236,11 +281,7 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     final uri = Uri.tryParse(url);
     if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
 
-    if (isTargetPermanentSite(url)) {
-      await _db.setSetting('is_18plus_permanently_pinned', 'true');
-    }
-
-    final targetHost = uri.host.toLowerCase().replaceAll('www.', '');
+    final targetHost = canonicalHost(url);
     if (targetHost.isEmpty ||
         targetHost.contains('google.') ||
         targetHost.contains('bing.') ||
@@ -249,87 +290,94 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
       return;
     }
 
-    // Check if domain or URL already exists in shortcuts
-    final alreadyExists = state.any((s) {
-      final existingHost = Uri.tryParse(s.url)?.host.toLowerCase().replaceAll('www.', '') ?? s.url.toLowerCase();
-      return existingHost == targetHost || s.url.toLowerCase() == url.toLowerCase();
-    });
+    // In-flight mutex check: prevent concurrent duplicate additions
+    if (_inFlightHosts.contains(targetHost)) return;
+    _inFlightHosts.add(targetHost);
 
-    if (alreadyExists) return;
-
-    // Format a clean label
-    String label = title.trim();
-    if (isTargetPermanentSite(url)) {
-      label = '18+ Videos';
-    } else if (label.isEmpty || label == url || label == 'New Tab') {
-      final parts = targetHost.split('.');
-      label = parts.isNotEmpty ? parts.first : targetHost;
-      if (label.isNotEmpty) {
-        label = label[0].toUpperCase() + label.substring(1);
+    try {
+      if (isTargetPermanentSite(url)) {
+        await _db.setSetting('is_18plus_permanently_pinned', 'true');
       }
-    }
-    if (label.length > 15) {
-      label = label.substring(0, 15).trim();
-    }
 
-    // Determine insert position in Row 2 (starts after top 4 sites)
-    // Row 1: positions 0, 1, 2, 3 (Google, YouTube, X, Wikipedia)
-    // Row 2: positions 4, 5, 6, 7 (Auto-pinned and secondary sites)
-    final id = _uuid.v4();
-    final items = List<ShortcutModel>.from(state);
+      // Check if this domain already has a shortcut button
+      final alreadyExists = state.any((s) => canonicalHost(s.url) == targetHost);
+      if (alreadyExists) return;
 
-    // Insertion target: position 4 (start of Row 2)
-    final insertIndex = items.length >= 4 ? 4 : items.length;
+      final mainUrl = canonicalUrl(url);
 
-    final newShortcut = ShortcutModel(
-      id: id,
-      label: label,
-      url: url,
-      faviconUrl: faviconUrl,
-      position: insertIndex,
-    );
-
-    if (insertIndex >= items.length) {
-      items.add(newShortcut);
-    } else {
-      items.insert(insertIndex, newShortcut);
-    }
-
-    // If total shortcuts exceed 8, remove the oldest dynamic item at the end of Row 2
-    // (Never remove items 0..3 or the permanently locked 18+ website)
-    if (items.length > 8) {
-      int removeIdx = -1;
-      for (var i = items.length - 1; i >= 4; i--) {
-        final s = items[i];
-        if (!isTargetPermanentSite(s.url)) {
-          removeIdx = i;
-          break;
+      // Format a clean label
+      String label = title.trim();
+      if (isTargetPermanentSite(url)) {
+        label = '18+ Videos';
+      } else if (label.isEmpty || label == url || label == 'New Tab') {
+        final parts = targetHost.split('.');
+        label = parts.isNotEmpty ? parts.first : targetHost;
+        if (label.isNotEmpty) {
+          label = label[0].toUpperCase() + label.substring(1);
         }
       }
-      if (removeIdx != -1) {
-        final removed = items.removeAt(removeIdx);
-        await _db.deleteShortcut(removed.id);
+      if (label.length > 15) {
+        label = label.substring(0, 15).trim();
       }
-    }
 
-    // Update positions in DB
-    await _db.insertShortcut(ShortcutsCompanion.insert(
-      id: id,
-      label: label,
-      url: url,
-      faviconUrl: Value(faviconUrl),
-      position: Value(insertIndex),
-    ));
+      final id = _uuid.v4();
+      final items = List<ShortcutModel>.from(state);
 
-    for (var i = 0; i < items.length; i++) {
-      items[i].position = i;
-      await _db.updateShortcut(ShortcutsCompanion(
-        id: Value(items[i].id),
-        position: Value(i),
+      // Insertion target: position 4 (start of Row 2)
+      final insertIndex = items.length >= 4 ? 4 : items.length;
+
+      final newShortcut = ShortcutModel(
+        id: id,
+        label: label,
+        url: mainUrl,
+        faviconUrl: faviconUrl,
+        position: insertIndex,
+      );
+
+      if (insertIndex >= items.length) {
+        items.add(newShortcut);
+      } else {
+        items.insert(insertIndex, newShortcut);
+      }
+
+      // If total shortcuts exceed 8, remove the oldest dynamic item at the end of Row 2
+      // (Never remove items 0..3 or the permanently locked 18+ website)
+      if (items.length > 8) {
+        int removeIdx = -1;
+        for (var i = items.length - 1; i >= 4; i--) {
+          final s = items[i];
+          if (!isTargetPermanentSite(s.url)) {
+            removeIdx = i;
+            break;
+          }
+        }
+        if (removeIdx != -1) {
+          final removed = items.removeAt(removeIdx);
+          await _db.deleteShortcut(removed.id);
+        }
+      }
+
+      // Update positions in DB
+      await _db.insertShortcut(ShortcutsCompanion.insert(
+        id: id,
+        label: label,
+        url: mainUrl,
+        faviconUrl: Value(faviconUrl),
+        position: Value(insertIndex),
       ));
-    }
 
-    state = items;
+      for (var i = 0; i < items.length; i++) {
+        items[i].position = i;
+        await _db.updateShortcut(ShortcutsCompanion(
+          id: Value(items[i].id),
+          position: Value(i),
+        ));
+      }
+
+      state = items;
+    } finally {
+      _inFlightHosts.remove(targetHost);
+    }
   }
 
   /// Update an existing shortcut.
