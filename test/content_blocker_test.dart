@@ -53,6 +53,28 @@ void main() {
       );
       expect(decision6.isBlocked, isTrue);
       expect(decision6.reason, equals(BlockReason.ad));
+
+      // Specific tests for IndianSexStories3 & adult video ad networks
+      final decision7 = blocker.evaluateRequest(
+        requestUrl: 'https://asg.videobaba.xyz/8qub8j3.js',
+        pageHost: 'indiansexstories3.com',
+      );
+      expect(decision7.isBlocked, isTrue);
+      expect(decision7.reason, equals(BlockReason.ad));
+
+      final decision8 = blocker.evaluateRequest(
+        requestUrl: 'https://ronracepub.com/e/base36/s1r7bwku2ux6haj33o6c8qyvoc46t',
+        pageHost: 'indiansexstories3.com',
+      );
+      expect(decision8.isBlocked, isTrue);
+      expect(decision8.reason, equals(BlockReason.ad));
+
+      final decision9 = blocker.evaluateRequest(
+        requestUrl: 'https://blazingserver.net/revive/www/delivery/asyncjs.php',
+        pageHost: 'indiansexstories3.com',
+      );
+      expect(decision9.isBlocked, isTrue);
+      expect(decision9.reason, equals(BlockReason.ad));
     });
 
     test('Blocks deep subdomains via suffix matching', () {

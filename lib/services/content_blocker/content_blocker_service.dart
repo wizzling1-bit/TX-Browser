@@ -221,6 +221,24 @@ class ContentBlockerService {
         if (window.__txShieldInjected) return;
         window.__txShieldInjected = true;
 
+        // ── 0. Defuse Inline Ad Pipelines & Popunder Queues ──
+        try {
+          window.mfAdsSpots = [];
+          Object.defineProperty(window, 'mfAdsSpots', {
+            get: () => [],
+            set: () => {},
+            configurable: false,
+          });
+          window.mfAdsQueue = { installed: true, push: () => {} };
+          Object.defineProperty(window, 'mfAdsQueue', {
+            get: () => ({ installed: true, push: () => {} }),
+            set: () => {},
+            configurable: false,
+          });
+          window.mfAdsPopDone = {};
+          window.mfAdsWeightsFetch = 'fail';
+        } catch(e) {}
+
         // ── 1. Inject Universal High-Priority Cosmetic Ad Hiding Styles ──
         try {
           const style = document.createElement('style');
@@ -237,6 +255,10 @@ class ContentBlockerService {
             .ad-slot,
             .advertisement,
             .sponsored-post,
+            .bottom-adv,
+            .footer-adv,
+            ins[data-revive-zoneid],
+            ins[class*="revive"],
             div[class*="floating-ad"],
             div[id*="floating-ad"],
             div[class*="float-ad"],
@@ -257,10 +279,20 @@ class ContentBlockerService {
             div[class*="modal_ad"],
             div[id*="modal_ad"],
             div[class*="banner_ad"],
+            div[class*="inpp"],
+            div[id*="inpp"],
+            div[class*="videobaba"],
+            div[id*="videobaba"],
+            div[class*="asg_"],
+            div[id*="asg_"],
             div[id*="exo_"],
             div[class*="exo_"],
             div[id*="juicy_"],
             div[class*="juicy_"],
+            iframe[src*="videobaba"],
+            iframe[src*="ronracepub"],
+            iframe[src*="blazingserver"],
+            iframe[src*="revive"],
             iframe[src*="exoclick"],
             iframe[src*="juicyads"],
             iframe[src*="adsterra"],
@@ -284,21 +316,61 @@ class ContentBlockerService {
           if (target) target.appendChild(style);
         } catch(e) {}
 
-        // ── 2. Popunder & window.open Trap Defuser ──
+        // ── 2. Strict Popunder, Clickunder & window.open Trap Neutralizer ──
         try {
           const originalOpen = window.open;
-          let lastUserTapTime = 0;
-          document.addEventListener('pointerup', function() {
-            lastUserTapTime = Date.now();
-          }, true);
-
           window.open = function(url, target, features) {
-            const timeSinceTap = Date.now() - lastUserTapTime;
-            // If window.open was triggered without a genuine recent user tap (< 400ms), neutralize it
-            if (timeSinceTap > 500 && !features) {
-              console.warn('[TxShield] Blocked automated window.open:', url);
+            // If window.open was triggered without a target URL or with empty/about:blank
+            if (!url || url === 'about:blank' || url === '' || typeof url !== 'string') {
+              console.warn('[TxShield] Suppressed blank window.open attempt');
+              return {
+                closed: false,
+                close: function() {},
+                focus: function() {},
+                blur: function() {},
+                location: { href: '' },
+              };
+            }
+
+            const lower = url.toLowerCase();
+            // Block known popunder, clickunder, and ad delivery networks
+            if (
+              lower.includes('videobaba') ||
+              lower.includes('ronracepub') ||
+              lower.includes('blazingserver') ||
+              lower.includes('racerads') ||
+              lower.includes('revive') ||
+              lower.includes('adsterra') ||
+              lower.includes('exoclick') ||
+              lower.includes('monetag') ||
+              lower.includes('popads') ||
+              lower.includes('popcash') ||
+              lower.includes('onclick') ||
+              lower.includes('highcpm') ||
+              lower.includes('juicyads') ||
+              lower.includes('clickadu') ||
+              lower.includes('hilltopads') ||
+              lower.includes('traffichaus') ||
+              lower.includes('plugrush') ||
+              lower.includes('bet365') ||
+              lower.includes('streamate')
+            ) {
+              console.warn('[TxShield] Blocked ad window.open:', url);
               return null;
             }
+
+            // Mobile security: Block arbitrary third-party popunder redirects on user clicks
+            try {
+              const destHost = new URL(url, window.location.href).hostname.replace(/^www\./, '');
+              const currHost = window.location.hostname.replace(/^www\./, '');
+              if (destHost !== currHost && !destHost.endsWith('.' + currHost)) {
+                if (!destHost.includes('google.com') && !destHost.includes('facebook.com') && !destHost.includes('apple.com')) {
+                  console.warn('[TxShield] Blocked external popup to:', destHost);
+                  return null;
+                }
+              }
+            } catch(e) {}
+
             return originalOpen.apply(this, arguments);
           };
         } catch(e) {}
@@ -307,7 +379,7 @@ class ContentBlockerService {
         function cleanOverlaysAndClickTraps() {
           try {
             // Collapse ad iframes and known ad anchor wrappers immediately
-            const adIframes = document.querySelectorAll('iframe[src*="doubleclick"], iframe[src*="exoclick"], iframe[src*="juicyads"], iframe[src*="adsterra"], iframe[src*="adservice"], iframe[src*="realsrv"], iframe[src*="tsyndicate"], iframe[src*="adcash"], iframe[src*="popads"], iframe[src*="monetag"], iframe[src*="clickadu"], iframe[src*="highcpm"], iframe[src*="wpadmngr"], iframe[src*="onclick"]');
+            const adIframes = document.querySelectorAll('iframe[src*="videobaba"], iframe[src*="ronracepub"], iframe[src*="blazingserver"], iframe[src*="revive"], iframe[src*="doubleclick"], iframe[src*="exoclick"], iframe[src*="juicyads"], iframe[src*="adsterra"], iframe[src*="adservice"], iframe[src*="realsrv"], iframe[src*="tsyndicate"], iframe[src*="adcash"], iframe[src*="popads"], iframe[src*="monetag"], iframe[src*="clickadu"], iframe[src*="highcpm"], iframe[src*="wpadmngr"], iframe[src*="onclick"]');
             for (let i = 0; i < adIframes.length; i++) {
               adIframes[i].remove();
             }
@@ -323,7 +395,7 @@ class ContentBlockerService {
 
               if (el.tagName === 'A' && el.href) {
                 const h = el.href.toLowerCase();
-                if (h.includes('highcpm') || h.includes('onclickalgo') || h.includes('adsterra') || h.includes('exoclick') || h.includes('monetag') || h.includes('clickadu') || h.includes('deloton') || h.includes('wpush') || h.includes('propush') || h.includes('hilltopads')) {
+                if (h.includes('highcpm') || h.includes('onclickalgo') || h.includes('adsterra') || h.includes('exoclick') || h.includes('monetag') || h.includes('clickadu') || h.includes('deloton') || h.includes('wpush') || h.includes('propush') || h.includes('hilltopads') || h.includes('videobaba') || h.includes('ronracepub') || h.includes('blazingserver')) {
                   el.remove();
                   continue;
                 }
@@ -355,7 +427,10 @@ class ContentBlockerService {
                   html.includes('popads') ||
                   html.includes('highcpm') ||
                   html.includes('onclick') ||
-                  (el.className && typeof el.className === 'string' && (el.className.includes('ad-') || el.className.includes('overlay_ad') || el.className.includes('pop_ad') || el.className.includes('floating_ad') || el.className.includes('banner_ad')))
+                  html.includes('videobaba') ||
+                  html.includes('ronracepub') ||
+                  html.includes('blazingserver') ||
+                  (el.className && typeof el.className === 'string' && (el.className.includes('ad-') || el.className.includes('overlay_ad') || el.className.includes('pop_ad') || el.className.includes('floating_ad') || el.className.includes('banner_ad') || el.className.includes('inpp')))
                 ) {
                   el.style.display = 'none';
                   el.style.visibility = 'hidden';

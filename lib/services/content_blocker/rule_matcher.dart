@@ -523,6 +523,17 @@ class RuleMatcher {
       'cdn.adcash.com',
       'rtb.adcash.com',
 
+      // ASG, RacerAds, Revive & Video Ad Servers (indiansexstories3, bhojpurisex, etc.)
+      'videobaba.xyz',
+      'asg.videobaba.xyz',
+      'ronracepub.com',
+      'racerads.com',
+      'blazingserver.net',
+      'revive-adserver.com',
+      'reviveserver.net',
+      'delivery-engine.com',
+      'ad-delivery.net',
+
       // High-Frequency Popunder, Push, Vignette & Video Ad Hosts (EasyList / AdGuard)
       'highcpmgate.com',
       'highcpmrevenuenetwork.com',
@@ -783,6 +794,14 @@ class RuleMatcher {
       '/ad-delivery/',
       '/ad-tag/',
       '/vignette?',
+      '/delivery/asyncjs.php',
+      '/delivery/',
+      '/revive/',
+      'videobaba',
+      'ronracepub',
+      'racerads',
+      'blazingserver',
+      'mfads',
     ]);
 
     _trackerPathPatterns.addAll([

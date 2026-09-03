@@ -816,7 +816,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
                         allowFileAccessFromFileURLs: false,
                         allowUniversalAccessFromFileURLs: false,
                         mixedContentMode: MixedContentMode.MIXED_CONTENT_COMPATIBILITY_MODE,
-                        supportMultipleWindows: true,
+                        supportMultipleWindows: false,
                         cacheMode: CacheMode.LOAD_DEFAULT,
                         domStorageEnabled: true,
                         databaseEnabled: true,
@@ -870,9 +870,8 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
                           return false;
                         }
 
-                        // Legitimate user-intended new tab
+                        // Legitimate user-intended new tab (do not hijack the current tab)
                         ref.read(tabsProvider.notifier).openTab(url: url);
-                        _loadUrl(url);
                         return true;
                       },
                       onLongPressHitTestResult: (controller, hitTestResult) {
