@@ -45,6 +45,14 @@
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="barcode" />
 
+        <!-- Default notification icon and channel for Firebase Cloud Messaging -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="tx_general" />
+
         <!-- FileProvider for safely opening downloaded files with system intents -->
         <provider
             android:name="androidx.core.content.FileProvider"
