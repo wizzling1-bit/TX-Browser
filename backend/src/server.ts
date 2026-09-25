@@ -7,6 +7,7 @@ import rateLimit from '@fastify/rate-limit';
 import { env } from './config/env.js';
 import { prisma } from './db/prisma.js';
 import { deviceRoutes } from './routes/device.routes.js';
+import { authRoutes } from './routes/auth.routes.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = fastify({
@@ -61,6 +62,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // 5. API Routes
   await app.register(deviceRoutes, { prefix: '/api/v1/devices' });
+  await app.register(authRoutes, { prefix: '/api/v1/auth' });
 
   // 6. Health & Readiness Probes
   app.get('/health', async () => {
