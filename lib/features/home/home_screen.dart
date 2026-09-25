@@ -25,6 +25,8 @@ import '../../services/suggestion_service/suggestion_model.dart';
 import '../../state/suggestions_provider.dart';
 import '../../widgets/search/search_suggestions_panel.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
+import '../../state/rewarded_perks_provider.dart';
+import '../../widgets/dialogs/notification_permission_sheet.dart';
 
 /// Home screen — pixel-perfect implementation of Home.png design.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -75,6 +77,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         await ref.read(historyProvider.notifier).getRecent(limit: 6);
     if (mounted) {
       setState(() => _recentEntries = entries);
+      if (entries.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            NotificationPermissionSheet.showIfEligible(context, ref);
+          }
+        });
+      }
     }
   }
 
@@ -300,6 +309,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
       items: [
+        _buildPopupItem('ad_free_pass', LucideIcons.star, '10-Min Ad-Free Pass', colors),
+        const PopupMenuDivider(height: 1),
         _buildPopupItem('new_tab', LucideIcons.plus, 'New tab', colors),
         _buildPopupItem('new_private_tab', LucideIcons.shieldCheck, 'New private tab', colors),
         const PopupMenuDivider(height: 1),
@@ -345,7 +356,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: TxSpacing.md),
+              _HomeMenuRow(
+                icon: LucideIcons.star,
+                label: '10-Min Ad-Free Pass',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _handleQuickAction('ad_free_pass');
+                },
+              ),
+              Divider(color: colors.border.withValues(alpha: 0.5), indent: 56, height: 1),
               _HomeMenuRow(
                 icon: LucideIcons.plus,
                 label: 'New tab',
@@ -424,6 +443,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _handleQuickAction(String action) {
     switch (action) {
+      case 'ad_free_pass':
+        _onUnlockAdFreePass();
+        break;
       case 'new_tab':
         ref.read(tabsProvider.notifier).openTab();
         break;
@@ -448,6 +470,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case 'exit':
         showTxExitDialog(context, ref);
         break;
+    }
+  }
+
+  void _onUnlockAdFreePass() {
+    final perks = ref.read(rewardedPerksProvider);
+    if (perks.isAdFreeActive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ad-Free Pass is active! ${perks.formatDuration(perks.remainingAdFreeTime)} remaining.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final didShow = ref.read(adServiceProvider).showRewardedAd(
+      onUserEarnedReward: (reward) {
+        ref.read(rewardedPerksProvider.notifier).activateAdFreePass();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 10-Minute Ad-Free Pass Activated! All in-app ads hidden.'),
+          ),
+        );
+      },
+      onDismissed: () {},
+    );
+    if (!didShow) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ad is loading, please try again in a moment.'),
+        ),
+      );
     }
   }
 
@@ -492,6 +547,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final tabCount = ref.watch(tabsProvider).count;
 
     final suggestionsState = ref.watch(suggestionsProvider);
+    final perks = ref.watch(rewardedPerksProvider);
 
     return PopScope(
       canPop: false,
@@ -608,15 +664,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             children: [
                               _TopIconButton(
                                 icon: LucideIcons.shieldCheck,
+                                tooltip: 'Privacy & Shield',
                                 onTap: () => _showPrivacyInfoSheet(context),
                                 colors: colors,
                               ),
                               const SizedBox(width: TxSpacing.sm),
-                              _TopIconButton(
-                                icon: LucideIcons.ellipsisVertical,
-                                onTapDown: (details) =>
-                                    _showHomeQuickMenu(context, details.globalPosition),
-                                colors: colors,
+                              Builder(
+                                builder: (btnContext) => _TopIconButton(
+                                  icon: LucideIcons.ellipsisVertical,
+                                  tooltip: 'Menu',
+                                  colors: colors,
+                                  onTap: () {
+                                    final box = btnContext.findRenderObject() as RenderBox?;
+                                    final pos = box != null
+                                        ? box.localToGlobal(Offset.zero)
+                                        : Offset.zero;
+                                    final size = box?.size ?? const Size(42, 42);
+                                    _showHomeQuickMenu(
+                                      context,
+                                      pos + Offset(size.width / 2, size.height),
+                                    );
+                                  },
+                                ),
                               ),
                             ],
                           ),
@@ -781,8 +850,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
 
+                  // ─── 2.5. 10-MIN AD-FREE PASS BANNER PILL ───────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(TxSpacing.lg, TxSpacing.sm, TxSpacing.lg, 0),
+                      child: _AdFreePassPill(
+                        perks: perks,
+                        colors: colors,
+                        onTap: _onUnlockAdFreePass,
+                      ),
+                    ),
+                  ),
+
                   const SliverToBoxAdapter(
-                    child: SizedBox(height: TxSpacing.lg),
+                    child: SizedBox(height: TxSpacing.md),
                   ),
 
                   // ─── 3. QUICK ACCESS BENTO GRID ──────────────────────
@@ -1081,46 +1162,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 class _TopIconButton extends StatelessWidget {
   const _TopIconButton({
     required this.icon,
-    this.onTap,
-    this.onTapDown,
+    required this.onTap,
     required this.colors,
+    this.tooltip,
   });
 
   final IconData icon;
-  final VoidCallback? onTap;
-  final GestureTapDownCallback? onTapDown;
+  final VoidCallback onTap;
   final TxColorScheme colors;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: onTapDown,
-      child: TxPressable(
-        onTap: onTap,
-        scaleDown: 0.90,
-        child: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: colors.border.withValues(alpha: 0.6),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
+    return Tooltip(
+      message: tooltip ?? '',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          splashColor: colors.primary.withValues(alpha: 0.15),
+          highlightColor: colors.primary.withValues(alpha: 0.08),
+          child: Ink(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: colors.border.withValues(alpha: 0.6),
+                width: 1,
               ),
-            ],
-          ),
-          child: Center(
-            child: Icon(
-              icon,
-              size: 20,
-              color: colors.textPrimary,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                size: 20,
+                color: colors.textPrimary,
+              ),
             ),
           ),
         ),
@@ -1128,6 +1214,150 @@ class _TopIconButton extends StatelessWidget {
     );
   }
 }
+
+class _AdFreePassPill extends StatelessWidget {
+  const _AdFreePassPill({
+    required this.perks,
+    required this.colors,
+    required this.onTap,
+  });
+
+  final RewardedPerksState perks;
+  final TxColorScheme colors;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = perks.isAdFreeActive;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive
+                ? colors.success.withValues(alpha: 0.10)
+                : colors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isActive
+                  ? colors.success.withValues(alpha: 0.45)
+                  : colors.primary.withValues(alpha: 0.28),
+              width: 1.1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (isActive ? colors.success : colors.primary).withValues(alpha: 0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: (isActive ? colors.success : colors.primary).withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    isActive ? LucideIcons.checkCircle : LucideIcons.star,
+                    size: 18,
+                    color: isActive ? colors.success : colors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          isActive ? 'Ad-Free Pass Active' : '10-Min Ad-Free Pass',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        if (isActive) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: colors.success.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              perks.formatDuration(perks.remainingAdFreeTime),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: colors.success,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 1.5),
+                    Text(
+                      isActive
+                          ? 'All in-app native & interstitial ads hidden'
+                          : 'Watch 1 video to browse completely ad-free',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? colors.success.withValues(alpha: 0.15)
+                      : colors.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!isActive) ...[
+                      const Icon(LucideIcons.play, size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      isActive ? 'Active' : 'Unlock',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: isActive ? colors.success : Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _QuickAccessItem extends StatelessWidget {
   const _QuickAccessItem({

@@ -14,10 +14,14 @@ import '../../state/history_provider.dart';
 import '../../state/proxy_provider.dart';
 import '../../state/settings_provider.dart';
 import '../../state/shield_provider.dart';
+import '../../state/rewarded_perks_provider.dart';
+import '../../state/notification_provider.dart';
+import '../../services/notification_service/notification_models.dart';
 import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/buttons/tx_pressable.dart';
 import '../../widgets/settings_section.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
+import '../../widgets/dialogs/cache_cleaned_dialog.dart';
 import '../../services/ad_service/ad_service.dart';
 
 /// Redesigned commercial Settings Screen.
@@ -31,6 +35,8 @@ class SettingsScreen extends ConsumerWidget {
     final lockState = ref.watch(appLockProvider);
     final proxyState = ref.watch(proxyProvider);
     final shieldState = ref.watch(shieldProvider);
+    final perks = ref.watch(rewardedPerksProvider);
+    final notifState = ref.watch(notificationSettingsProvider);
 
     return PopScope(
       canPop: false,
@@ -98,6 +104,67 @@ class SettingsScreen extends ConsumerWidget {
                     },
                   ),
                 ),
+              ],
+            ),
+
+            // ─── PUSH NOTIFICATIONS ──────────────────────────────
+            SettingsSection(
+              title: 'Notifications',
+              children: [
+                SettingsRow(
+                  icon: LucideIcons.bell,
+                  title: 'Push Notifications',
+                  subtitle: notifState.notificationsEnabled ? 'Enabled' : 'Disabled',
+                  trailing: Switch(
+                    value: notifState.notificationsEnabled,
+                    onChanged: (v) {
+                      ref
+                          .read(notificationSettingsProvider.notifier)
+                          .setNotificationsEnabled(v);
+                    },
+                  ),
+                ),
+                if (notifState.notificationsEnabled) ...[
+                  SettingsRow(
+                    icon: LucideIcons.rotateCw,
+                    title: 'Browser Updates',
+                    subtitle: 'New features and version releases',
+                    trailing: Switch(
+                      value: notifState.updatesEnabled,
+                      onChanged: (v) {
+                        ref
+                            .read(notificationSettingsProvider.notifier)
+                            .setTopicEnabled(ApprovedTopics.updates, v);
+                      },
+                    ),
+                  ),
+                  SettingsRow(
+                    icon: LucideIcons.shieldAlert,
+                    title: 'Security Advisories',
+                    subtitle: 'Important safe browsing advisories',
+                    trailing: Switch(
+                      value: notifState.securityEnabled,
+                      onChanged: (v) {
+                        ref
+                            .read(notificationSettingsProvider.notifier)
+                            .setTopicEnabled(ApprovedTopics.security, v);
+                      },
+                    ),
+                  ),
+                  SettingsRow(
+                    icon: LucideIcons.sparkles,
+                    title: 'Promotions & Perks',
+                    subtitle: 'Partner offers and perks',
+                    trailing: Switch(
+                      value: notifState.promotionsEnabled,
+                      onChanged: (v) {
+                        ref
+                            .read(notificationSettingsProvider.notifier)
+                            .setTopicEnabled(ApprovedTopics.promotions, v);
+                      },
+                    ),
+                  ),
+                ],
               ],
             ),
 
@@ -196,15 +263,32 @@ class SettingsScreen extends ConsumerWidget {
               title: 'About & Support',
               children: [
                 SettingsRow(
-                  icon: LucideIcons.heartHandshake,
-                  title: 'Support TX Browser',
-                  value: 'Watch Ad',
+                  icon: LucideIcons.star,
+                  title: '10-Min Ad-Free Pass',
+                  subtitle: perks.isAdFreeActive
+                      ? 'Ad-free browsing active'
+                      : 'Watch a short video to hide all ads for 10 min',
+                  value: perks.isAdFreeActive
+                      ? perks.formatDuration(perks.remainingAdFreeTime)
+                      : 'Unlock',
+                  statusColor: perks.isAdFreeActive ? colors.success : colors.primary,
                   onTap: () {
+                    if (perks.isAdFreeActive) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Ad-Free Pass is active! ${perks.formatDuration(perks.remainingAdFreeTime)} remaining.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
                     final didShow = ref.read(adServiceProvider).showRewardedAd(
                       onUserEarnedReward: (reward) {
+                        ref.read(rewardedPerksProvider.notifier).activateAdFreePass();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Thank you for supporting TX Browser! ❤️'),
+                            content: Text('🎉 10-Minute Ad-Free Pass Activated! All ads are now hidden.'),
                           ),
                         );
                       },
@@ -565,9 +649,7 @@ class _ClearDataSheetState extends State<_ClearDataSheet> {
                 }
                 if (context.mounted) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Browsing data cleared')),
-                  );
+                  CacheCleanedDialog.show(context);
                 }
               },
             ),

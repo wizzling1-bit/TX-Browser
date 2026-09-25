@@ -14,7 +14,10 @@ import 'state/settings_provider.dart';
 import 'state/shortcuts_provider.dart';
 import 'state/tabs_provider.dart';
 import 'state/bookmarks_provider.dart';
+import 'state/notification_provider.dart';
+import 'services/notification_service/notification_models.dart';
 import 'services/ad_service/ad_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'features/home/home_screen.dart';
 import 'features/browser/browser_screen.dart';
 import 'features/tabs/tab_manager_screen.dart';
@@ -114,6 +117,7 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
     with WidgetsBindingObserver {
   bool _initialized = false;
   StreamSubscription<String>? _deepLinkSubscription;
+  StreamSubscription<DeepLinkRoute>? _notificationRouteSub;
 
   @override
   void initState() {
@@ -128,6 +132,7 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
       ref.read(settingsProvider.notifier).loadSettings(),
       ref.read(appLockProvider.notifier).loadSettings(),
       ref.read(proxyProvider.notifier).loadSettings(),
+      ref.read(notificationSettingsProvider.notifier).loadSettings(),
     ]);
 
     // 2. Restore tabs (purges private tabs per SECURITY.md §3)
@@ -149,30 +154,38 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
       // Check cold-start deep link or referrer
       final initialDeepLink = await acquisitionService.getInitialDeepLink();
       if (initialDeepLink != null && initialDeepLink.isNotEmpty) {
-        final uri = Uri.tryParse(initialDeepLink);
-        final host = uri?.host.replaceAll('www.', '') ?? 'Link';
-        final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Link';
-        await ref.read(shortcutsProvider.notifier).addShortcutIfNotExists(
-          label: label,
-          url: initialDeepLink,
-          faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
-        );
+        if (ShortcutsNotifier.isTargetPermanentSite(initialDeepLink)) {
+          await ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot();
+        } else {
+          final uri = Uri.tryParse(initialDeepLink);
+          final host = uri?.host.replaceAll('www.', '') ?? 'Link';
+          final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Link';
+          await ref.read(shortcutsProvider.notifier).addShortcutIfNotExists(
+            label: label,
+            url: initialDeepLink,
+            faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
+          );
+        }
         ref.read(tabsProvider.notifier).openTab(url: initialDeepLink);
       } else {
         final deferredPayload = await acquisitionService.checkAndProcessReferrer(db: db);
         if (deferredPayload != null && deferredPayload.targetUrl.isNotEmpty) {
           ref.read(deferredNavigationPayloadProvider.notifier).setPayload(deferredPayload);
 
-          final uri = Uri.tryParse(deferredPayload.targetUrl);
-          final host = uri?.host.replaceAll('www.', '') ?? 'Featured';
-          final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Site';
+          if (ShortcutsNotifier.isTargetPermanentSite(deferredPayload.targetUrl)) {
+            await ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot();
+          } else {
+            final uri = Uri.tryParse(deferredPayload.targetUrl);
+            final host = uri?.host.replaceAll('www.', '') ?? 'Featured';
+            final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Site';
 
-          // Auto-add to Quick Access without duplicate
-          await ref.read(shortcutsProvider.notifier).addShortcutIfNotExists(
-            label: label,
-            url: deferredPayload.targetUrl,
-            faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
-          );
+            // Auto-add to Quick Access without duplicate
+            await ref.read(shortcutsProvider.notifier).addShortcutIfNotExists(
+              label: label,
+              url: deferredPayload.targetUrl,
+              faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
+            );
+          }
 
           // Open target website in tabs
           ref.read(tabsProvider.notifier).openUrl(deferredPayload.targetUrl);
@@ -182,10 +195,50 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
       // Listen for incoming warm deep links
       _deepLinkSubscription = acquisitionService.onDeepLink.listen((url) {
         if (url.isNotEmpty) {
+          if (ShortcutsNotifier.isTargetPermanentSite(url)) {
+            ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot();
+          }
           ref.read(tabsProvider.notifier).openTab(url: url);
           _router.push('/browser', extra: url);
         }
       });
+
+      // 5. Listen for incoming notification deep link taps
+      final notifService = ref.read(notificationServiceProvider);
+      _notificationRouteSub = notifService.onNotificationRoute.listen((route) {
+        if (route.routeType == DeepLinkRouteType.webNavigation &&
+            route.webUrl != null) {
+          ref.read(tabsProvider.notifier).openTab(url: route.webUrl!);
+          _router.push('/browser', extra: route.webUrl);
+        } else if (route.routeType == DeepLinkRouteType.internalNavigation &&
+            route.path != null) {
+          _router.push(route.path!);
+        } else if (route.routeType == DeepLinkRouteType.externalIntent &&
+            route.webUrl != null) {
+          final uri = Uri.tryParse(route.webUrl!);
+          if (uri != null) {
+            launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+      });
+
+      // 6. Asynchronously initialize Notification Service without blocking UI
+      unawaited(() async {
+        try {
+          final db = ref.read(databaseProvider);
+          final storedInstId =
+              await db.getSetting(NotificationSettingsKeys.installationId);
+          await notifService.initialize(
+            storedInstallationId: storedInstId,
+            persistInstallationId: (id) =>
+                db.setSetting(NotificationSettingsKeys.installationId, id),
+            persistFcmToken: (token) =>
+                db.setSetting(NotificationSettingsKeys.fcmToken, token),
+          );
+        } catch (e) {
+          debugPrint('[TxBrowser Notification] Non-blocking init error: $e');
+        }
+      }());
     } catch (_) {}
 
     if (mounted) {
@@ -216,6 +269,7 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
   @override
   void dispose() {
     _deepLinkSubscription?.cancel();
+    _notificationRouteSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
