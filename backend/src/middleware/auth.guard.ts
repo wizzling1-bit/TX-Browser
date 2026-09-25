@@ -49,3 +49,5 @@ export function requireRole(allowedRoles: AdminRole[]) {
     }
   };
 }
+
+export const authGuard = requireRole;

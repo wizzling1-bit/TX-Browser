@@ -38,6 +38,10 @@ export class AuditService {
       return null;
     }
   }
+
+  async log(params: Parameters<AuditService['recordLog']>[0]) {
+    return this.recordLog(params);
+  }
 }
 
 export const auditService = new AuditService();

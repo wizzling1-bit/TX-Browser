@@ -8,6 +8,12 @@ import { env } from './config/env.js';
 import { prisma } from './db/prisma.js';
 import { deviceRoutes } from './routes/device.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
+import { notificationRoutes } from './routes/notification.routes.js';
+import { audienceRoutes } from './routes/audience.routes.js';
+import { analyticsRoutes } from './routes/analytics.routes.js';
+import { deviceAdminRoutes } from './routes/device_admin.routes.js';
+import { auditRoutes } from './routes/audit.routes.js';
+import { adminUserRoutes } from './routes/admin_user.routes.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = fastify({
@@ -63,6 +69,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   // 5. API Routes
   await app.register(deviceRoutes, { prefix: '/api/v1/devices' });
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(notificationRoutes, { prefix: '/api/v1/notifications' });
+  await app.register(audienceRoutes, { prefix: '/api/v1/audiences' });
+  await app.register(analyticsRoutes, { prefix: '/api/v1/analytics' });
+  await app.register(deviceAdminRoutes, { prefix: '/api/v1/admin/devices' });
+  await app.register(auditRoutes, { prefix: '/api/v1/admin/audit-logs' });
+  await app.register(adminUserRoutes, { prefix: '/api/v1/admin/users' });
 
   // 6. Health & Readiness Probes
   app.get('/health', async () => {
