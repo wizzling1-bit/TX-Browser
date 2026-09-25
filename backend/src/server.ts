@@ -87,15 +87,34 @@ export async function buildServer(): Promise<FastifyInstance> {
   return app;
 }
 
+import { queueService } from './services/queue.service.js';
+import { schedulerService } from './services/scheduler.service.js';
+
 // Start server if executed directly
 if (process.argv[1]?.endsWith('server.ts') || process.argv[1]?.endsWith('server.js')) {
   buildServer().then(async (app) => {
     try {
       await app.listen({ port: env.PORT, host: '0.0.0.0' });
       app.log.info(`TX Browser Notification Backend listening on port ${env.PORT}`);
+
+      // Start queue worker & scheduler
+      queueService.startWorker(3000);
+      schedulerService.startScheduler(15000);
+
+      const shutdown = async () => {
+        app.log.info('Gracefully stopping background services...');
+        queueService.stopWorker();
+        schedulerService.stopScheduler();
+        await app.close();
+        process.exit(0);
+      };
+
+      process.on('SIGINT', shutdown);
+      process.on('SIGTERM', shutdown);
     } catch (err) {
       app.log.error(err);
       process.exit(1);
     }
   });
 }
+
