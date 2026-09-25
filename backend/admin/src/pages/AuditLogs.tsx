@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { History, Shield, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { RefreshCw, Loader2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { AuditLogItem, PaginatedResult } from '../types/index.js';
 
@@ -8,7 +8,6 @@ export const AuditLogs: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
 
   const loadLogs = async () => {
     try {
@@ -18,7 +17,6 @@ export const AuditLogs: React.FC = () => {
       );
       setLogs(data.items);
       setTotalPages(data.pagination.totalPages);
-      setTotalCount(data.pagination.total);
     } catch (err) {
       console.error('Failed to load audit logs:', err);
     } finally {

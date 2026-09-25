@@ -5,7 +5,9 @@
   "main": "dist/src/server.js",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:admin",
+    "build:backend": "tsc",
+    "build:admin": "npm run --prefix admin build",
     "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run",

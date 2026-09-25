@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Smartphone, Search, CheckCircle2, XCircle, HelpCircle, Loader2, Calendar, Shield } from 'lucide-react';
+import { Search, CheckCircle2, XCircle, HelpCircle, Loader2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { DeviceItem, PaginatedResult } from '../types/index.js';
 

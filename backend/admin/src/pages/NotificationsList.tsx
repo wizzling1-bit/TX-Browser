@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Bell,
   Search,
-  Filter,
   Send,
   XCircle,
   Copy,
   Trash2,
-  ExternalLink,
   RefreshCw,
   PlusCircle,
   Loader2,

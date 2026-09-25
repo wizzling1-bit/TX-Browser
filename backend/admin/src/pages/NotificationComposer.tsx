@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
   Send,
-  Calendar,
   Image as ImageIcon,
   Link,
   Users,
   Smartphone,
   AlertTriangle,
-  CheckCircle2,
   Clock,
   Sparkles,
   Wifi,
   BatteryCharging,
   ChevronDown,
   Loader2,
-  ExternalLink,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { NotificationType, DestinationType, AudienceType } from '../types/index.js';

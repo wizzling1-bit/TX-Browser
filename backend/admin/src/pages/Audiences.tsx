@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Smartphone, CheckCircle2, XCircle, HelpCircle, Hash, RefreshCw } from 'lucide-react';
+import { CheckCircle2, XCircle, HelpCircle, RefreshCw } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { AudienceStats } from '../types/index.js';
 

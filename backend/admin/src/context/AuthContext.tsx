@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AdminUser } from '../types/index.js';
-import { api, ApiError } from '../lib/api.js';
+import { api } from '../lib/api.js';
 
 interface AuthContextType {
   user: AdminUser | null;

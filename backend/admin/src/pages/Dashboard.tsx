@@ -2,11 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   Smartphone,
   CheckCircle2,
-  Send,
   Eye,
   PlusCircle,
   RefreshCw,
-  Clock,
   ArrowUpRight,
   TrendingUp,
 } from 'lucide-react';

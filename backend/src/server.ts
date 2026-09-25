@@ -4,6 +4,9 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import session from '@fastify/session';
 import rateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
+import fs from 'fs';
 import { env } from './config/env.js';
 import { prisma } from './db/prisma.js';
 import { deviceRoutes } from './routes/device.routes.js';
@@ -76,7 +79,28 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(auditRoutes, { prefix: '/api/v1/admin/audit-logs' });
   await app.register(adminUserRoutes, { prefix: '/api/v1/admin/users' });
 
-  // 6. Health & Readiness Probes
+  // 6. Static Admin SPA serving
+  const adminDist = path.resolve(process.cwd(), 'admin/dist');
+  if (fs.existsSync(adminDist)) {
+    await app.register(fastifyStatic, {
+      root: adminDist,
+      prefix: '/admin/',
+      decorateReply: false,
+    });
+
+    app.get('/', async (_, reply) => {
+      return reply.redirect('/admin/');
+    });
+
+    app.setNotFoundHandler((request, reply) => {
+      if (request.raw.url?.startsWith('/admin')) {
+        return reply.sendFile('index.html', adminDist);
+      }
+      reply.status(404).send({ error: 'Not Found' });
+    });
+  }
+
+  // 7. Health & Readiness Probes
   app.get('/health', async () => {
     return {
       status: 'healthy',

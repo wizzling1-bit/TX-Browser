@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, TrendingUp, CheckCircle, AlertTriangle, Eye, RefreshCw, Send } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Eye, RefreshCw, Send } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { AnalyticsOverview } from '../types/index.js';
 

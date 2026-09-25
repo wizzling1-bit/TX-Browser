@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserCog, PlusCircle, Shield, CheckCircle2, XCircle, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, CheckCircle2, XCircle, Trash2, Loader2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { AdminUser, AdminRole } from '../types/index.js';
 import { useAuth } from '../context/AuthContext.js';

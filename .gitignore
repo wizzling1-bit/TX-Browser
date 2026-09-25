@@ -60,3 +60,19 @@ firebase-adminsdk*.json
 *.tar.gz
 *.keystore
 *.jks
+
+# Agent, skill, and superpower tooling
+.agents/
+agents/
+.skills/
+skills/
+skills-lock.json
+.superpowers/
+superpowers/
+docs/superpowers/
+.codex/
+.impeccable/
+AGENTS.MD
+AGENTS.md
+GEMINI.MD
+GEMINI.md
