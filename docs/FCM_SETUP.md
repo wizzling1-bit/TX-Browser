@@ -103,8 +103,8 @@ ADMIN_SESSION_SECRET="generate_a_secure_random_string_of_at_least_32_characters_
 CORS_ORIGINS="*"
 
 # Firebase Admin Service Account Credentials
-FIREBASE_PROJECT_ID="tx-browser-production"
-FIREBASE_CLIENT_EMAIL="firebase-adminsdk@tx-browser-production.iam.gserviceaccount.com"
+FIREBASE_PROJECT_ID="tx-browser"
+FIREBASE_CLIENT_EMAIL="firebase-adminsdk@tx-browser.iam.gserviceaccount.com"
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n"
 
 # Initial Super Admin Seed Credentials
