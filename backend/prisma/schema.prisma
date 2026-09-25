@@ -1,0 +1,200 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+}
+
+enum NotificationType {
+  GENERAL
+  BROWSER_UPDATE
+  PROMOTION
+  NEW_FEATURE
+  SECURITY
+  ANNOUNCEMENT
+  MAINTENANCE
+}
+
+enum DestinationType {
+  HOME
+  WEB_URL
+  PLAY_STORE
+  INTERNAL_SCREEN
+  NO_ACTION
+}
+
+enum AudienceType {
+  ALL_USERS
+  TOPIC
+  SEGMENT
+}
+
+enum NotificationStatus {
+  DRAFT
+  SCHEDULED
+  QUEUED
+  SENDING
+  SENT
+  PARTIALLY_FAILED
+  FAILED
+  CANCELLED
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model AdminUser {
+  id             String          @id @default(uuid())
+  email          String          @unique
+  passwordHash   String          @map("password_hash")
+  name           String
+  role           AdminRole       @default(ADMIN)
+  isActive       Boolean         @default(true) @map("is_active")
+  failedAttempts Int             @default(0) @map("failed_attempts")
+  lockedUntil    DateTime?       @map("locked_until")
+  lastLoginAt    DateTime?       @map("last_login_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  notifications  Notification[]
+  auditLogs      AdminAuditLog[]
+
+  @@map("admin_users")
+}
+
+model DeviceInstallation {
+  id                     String    @id @default(uuid())
+  installationId         String    @unique @map("installation_id")
+  fcmToken               String    @map("fcm_token")
+  platform               String    @default("android")
+  appVersion             String    @map("app_version")
+  buildNumber            Int       @map("build_number")
+  androidVersion         String    @map("android_version")
+  deviceModel            String    @map("device_model")
+  notificationPermission String    @default("unknown") @map("notification_permission") // granted | denied | unknown
+  isActive               Boolean   @default(true) @map("is_active")
+  lastSeenAt             DateTime  @default(now()) @map("last_seen_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  topics                 DeviceTopic[]
+  deliveries             NotificationDelivery[]
+
+  @@index([fcmToken])
+  @@index([isActive])
+  @@index([lastSeenAt])
+  @@index([appVersion])
+  @@map("device_installations")
+}
+
+model DeviceTopic {
+  id             String             @id @default(uuid())
+  installationId String             @map("installation_id")
+  topic          String
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  device         DeviceInstallation @relation(fields: [installationId], references: [installationId], onDelete: Cascade)
+
+  @@unique([installationId, topic])
+  @@map("device_topics")
+}
+
+model Notification {
+  id               String             @id @default(uuid())
+  title            String
+  body             String
+  imageUrl         String?            @map("image_url")
+  notificationType NotificationType   @default(GENERAL) @map("notification_type")
+  destinationType  DestinationType    @default(HOME) @map("destination_type")
+  destinationValue String?            @map("destination_value")
+  audienceType     AudienceType       @default(ALL_USERS) @map("audience_type")
+  audienceConfig   Json?              @map("audience_config")
+  status           NotificationStatus @default(DRAFT)
+  scheduledAt      DateTime?          @map("scheduled_at")
+  startedAt        DateTime?          @map("started_at")
+  completedAt      DateTime?          @map("completed_at")
+  createdById      String?            @map("created_by")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  createdBy        AdminUser?         @relation(fields: [createdById], references: [id])
+  deliveries       NotificationDelivery[]
+  jobs             NotificationJob[]
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationJob {
+  id             String       @id @default(uuid())
+  notificationId String       @map("notification_id")
+  jobType        String       @map("job_type") // TOPIC_SEND | MULTICAST_BATCH
+  payload        Json
+  status         JobStatus    @default(PENDING)
+  attempts       Int          @default(0)
+  maxAttempts    Int          @default(3) @map("max_attempts")
+  errorMessage   String?      @map("error_message")
+  lockedAt       DateTime?    @map("locked_at")
+  lockedBy       String?      @map("locked_by")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([status, lockedAt])
+  @@map("notification_jobs")
+}
+
+model NotificationDelivery {
+  id                String              @id @default(uuid())
+  notificationId    String              @map("notification_id")
+  installationId    String?             @map("installation_id")
+  providerMessageId String?             @map("provider_message_id")
+  status            String              @default("SENT") // SENT | FAILED | OPENED
+  errorCode         String?             @map("error_code")
+  errorMessage      String?             @map("error_message")
+  sentAt            DateTime?           @map("sent_at")
+  deliveredAt       DateTime?           @map("delivered_at")
+  openedAt          DateTime?           @map("opened_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  notification      Notification        @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  device            DeviceInstallation? @relation(fields: [installationId], references: [installationId], onDelete: SetNull)
+
+  @@index([notificationId])
+  @@index([installationId])
+  @@map("notification_deliveries")
+}
+
+model AdminAuditLog {
+  id           String     @id @default(uuid())
+  adminUserId  String?    @map("admin_user_id")
+  action       String
+  resourceType String     @map("resource_type")
+  resourceId   String?    @map("resource_id")
+  metadata     Json?
+  ipAddress    String?    @map("ip_address")
+  userAgent    String?    @map("user_agent")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  adminUser    AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId])
+  @@index([action])
+  @@map("admin_audit_logs")
+}
