@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    border-color: #1F2E22;
+  }
+
+  body {
+    background-color: #080D09;
+    color: #E5EDE7;
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom Sleek Minimalist Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #080D09;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1F2E22;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2D4231;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(15, 22, 17, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(45, 66, 49, 0.6);
+  }
+
+  .glass-card {
+    background: rgba(20, 30, 22, 0.7);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(45, 66, 49, 0.5);
+  }
+
+  .glass-modal {
+    background: rgba(15, 22, 17, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(45, 66, 49, 0.7);
+  }
+
+  .glow-border {
+    box-shadow: 0 0 20px -3px rgba(34, 197, 94, 0.2);
+  }
+
+  .saas-input {
+    background-color: #0A110C;
+    border: 1px solid #1F2E22;
+    color: #F4F8F5;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .saas-input:focus {
+    border-color: #22C55E;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+    outline: none;
+  }
+}

@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,14 @@ void main() async {
     debugPrint('[TxBrowser Async Error] $error\n$stack');
     return true; // Handled
   };
+
+  // Initialize Firebase FIRST — required for FCM token generation
+  try {
+    await Firebase.initializeApp();
+    debugPrint('[main] Firebase initialized successfully');
+  } catch (e) {
+    debugPrint('[main] Firebase init error (may already be initialized): $e');
+  }
 
   // Initialize AdMob and Content Blocker ServiceWorker on mobile platforms
   if (!kIsWeb) {

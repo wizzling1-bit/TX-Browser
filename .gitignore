@@ -46,6 +46,7 @@ app.*.map.json
 
 # Backend & Admin node_modules, build output and secrets
 backend/node_modules/
+backend/.next/
 backend/dist/
 backend/admin/node_modules/
 backend/admin/dist/

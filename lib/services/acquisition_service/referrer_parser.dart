@@ -16,30 +16,48 @@ class ReferrerParser {
 
     final trimmed = rawReferrer.trim();
 
-    // 1. Direct valid URL check
-    final directValid = ReferrerUrlValidator.sanitizeAndValidate(trimmed);
-    if (directValid != null) {
-      return {
-        'targetUrl': directValid,
-        'campaign': null,
-      };
+    // 0. If it contains a referrer parameter (e.g. Play Store URL), extract the inner referrer first
+    String toProcess = trimmed;
+    if (trimmed.contains('referrer=')) {
+      final uri = Uri.tryParse(trimmed);
+      final refParam = uri?.queryParameters['referrer'];
+      if (refParam != null && refParam.isNotEmpty) {
+        toProcess = refParam;
+      }
+    }
+
+    // 1. Direct valid URL check (only if it does not contain nested target_url / referrer params)
+    if (!toProcess.contains('target_url') &&
+        !toProcess.contains('targeturl') &&
+        !toProcess.contains('targetUrl')) {
+      final directValid = ReferrerUrlValidator.sanitizeAndValidate(toProcess);
+      if (directValid != null) {
+        return {
+          'targetUrl': directValid,
+          'campaign': null,
+        };
+      }
     }
 
     // 2. Decode string if URL-encoded (e.g. target_url%3D...)
-    var decoded = trimmed;
+    var decoded = toProcess;
     try {
-      if (trimmed.contains('%3D') || trimmed.contains('%3d') || trimmed.contains('%26')) {
-        decoded = Uri.decodeComponent(trimmed);
+      if (toProcess.contains('%3D') || toProcess.contains('%3d') || toProcess.contains('%26')) {
+        decoded = Uri.decodeComponent(toProcess);
       }
     } catch (_) {}
 
     // Check if after decoding it became a direct URL
-    final decodedDirect = ReferrerUrlValidator.sanitizeAndValidate(decoded);
-    if (decodedDirect != null) {
-      return {
-        'targetUrl': decodedDirect,
-        'campaign': null,
-      };
+    if (!decoded.contains('target_url') &&
+        !decoded.contains('targeturl') &&
+        !decoded.contains('targetUrl')) {
+      final decodedDirect = ReferrerUrlValidator.sanitizeAndValidate(decoded);
+      if (decodedDirect != null) {
+        return {
+          'targetUrl': decodedDirect,
+          'campaign': null,
+        };
+      }
     }
 
     // 3. Parse query parameters

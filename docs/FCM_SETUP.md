@@ -1,10 +1,20 @@
 # TX Browser — Production FCM Push Notification Platform Setup Guide
 
+> [!NOTE]
+> **Live Platform Status**: Fully Active & Operational  
+> - **Admin Console URL**: [http://localhost:4000/admin/](http://localhost:4000/admin/)  
+> - **Super Admin Login**: `admin@txbrowser.com`  
+> - **Default Password**: `ChangeMeNowSecure123!`  
+> - **Firebase Project**: `tx-browser` (Project #: `208918627199`)  
+> - **Cloud Database**: Supabase PostgreSQL Cloud (`tx-browser-fcm` / `ap-south-1`)  
+> - **Client Privacy Policy**: **Zero User Login Required** (100% anonymous drift hardware UUID)  
+> - **Direct Cloud Sync**: **Enabled** (Clients sync directly to Supabase PostgREST without needing any local backend)
+
 This guide details the complete configuration, deployment, and operational procedures for the **TX Browser Push Notification Platform**, consisting of:
-1. **Flutter Mobile Client & Android 14+ Integration** (`com.wizzling.tx_browser`)
+1. **Flutter Mobile Client & Android 14+ Integration** (`com.wizzling.tx_browser` with zero login)
 2. **Fastify / TypeScript Push API & Transactional Queue Worker** (`backend/`)
-3. **PostgreSQL Database with Prisma ORM**
-4. **Vite React Admin Console** with Live Android 14+ Notification Preview (`backend/admin/`)
+3. **Supabase Cloud PostgreSQL Database**
+4. **Vite React Admin Console** with Live Android 14+ Notification Preview & Direct Device Ping (`backend/admin/`)
 
 ---
 

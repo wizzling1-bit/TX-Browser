@@ -169,15 +169,57 @@ class NotificationPayload {
     String? notificationTitle,
     String? notificationBody,
   }) {
-    final title = notificationTitle ?? (data['title'] as String?) ?? 'TX Browser';
-    final body = notificationBody ?? (data['body'] as String?) ?? '';
+    final title = notificationTitle ??
+        (data['title'] as String?) ??
+        (data['notification_title'] as String?) ??
+        (data['notificationTitle'] as String?) ??
+        'TX Browser';
+
+    final body = notificationBody ??
+        (data['body'] as String?) ??
+        (data['notification_body'] as String?) ??
+        (data['notificationBody'] as String?) ??
+        '';
+
     final notificationId = (data['notificationId'] as String?) ??
+        (data['notification_id'] as String?) ??
         (data['id'] as String?) ??
         DateTime.now().millisecondsSinceEpoch.toString();
-    final imageUrl = (data['imageUrl'] as String?) ?? (data['image'] as String?);
-    final notificationType = NotificationType.fromString(data['type'] as String?);
-    final destinationType = DestinationType.fromString(data['destinationType'] as String?);
-    final destinationValue = data['destinationValue'] as String?;
+
+    final imageUrl = (data['imageUrl'] as String?) ??
+        (data['image_url'] as String?) ??
+        (data['image'] as String?);
+
+    final notificationType = NotificationType.fromString(
+        (data['type'] as String?) ??
+        (data['notification_type'] as String?) ??
+        (data['notificationType'] as String?));
+
+    final rawDestType = (data['destinationType'] as String?) ??
+        (data['destination_type'] as String?) ??
+        (data['destination'] as String?);
+
+    final destinationValue = (data['destinationValue'] as String?) ??
+        (data['destination_value'] as String?) ??
+        (data['url'] as String?) ??
+        (data['link'] as String?) ??
+        (data['target_url'] as String?) ??
+        (data['targetUrl'] as String?);
+
+    var destinationType = DestinationType.fromString(rawDestType);
+
+    // If destinationType resolved to home, but destinationValue has a web/play store URL, automatically infer destination
+    if (destinationType == DestinationType.home &&
+        destinationValue != null &&
+        destinationValue.trim().isNotEmpty) {
+      final trimmed = destinationValue.trim().toLowerCase();
+      if (trimmed.contains('play.google.com/store/apps') ||
+          trimmed.contains('market://')) {
+        destinationType = DestinationType.playStore;
+      } else if (trimmed.startsWith('https://') || trimmed.startsWith('http://')) {
+        destinationType = DestinationType.webUrl;
+      }
+    }
 
     return NotificationPayload(
       notificationId: notificationId,
@@ -194,12 +236,18 @@ class NotificationPayload {
   Map<String, dynamic> toMap() {
     return {
       'notificationId': notificationId,
+      'notification_id': notificationId,
       'title': title,
       'body': body,
       'imageUrl': imageUrl,
+      'image_url': imageUrl,
       'type': notificationType.name,
+      'notification_type': notificationType.name,
       'destinationType': destinationType.toPayloadString(),
+      'destination_type': destinationType.toPayloadString(),
       'destinationValue': destinationValue,
+      'destination_value': destinationValue,
+      'url': destinationValue,
       ...data,
     };
   }

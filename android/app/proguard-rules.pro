@@ -54,3 +54,14 @@
 -dontwarn java.awt.**
 -dontwarn org.codehaus.mojo.animal_sniffer.**
 
+# Firebase Messaging & Background Handler
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+-keep class io.flutter.plugins.firebase.messaging.** { *; }
+
+# Flutter Local Notifications Plugin
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+
+# Permission Handler Plugin
+-keep class com.baseflow.permissionhandler.** { *; }
+

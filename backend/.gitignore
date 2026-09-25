@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment files (NEVER commit these)
+.env
+.env.local
+.env.production
+.env.production.local
+.env.development.local
+
+# Prisma generated client
+prisma/generated/
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel

@@ -16,6 +16,7 @@ import 'state/tabs_provider.dart';
 import 'state/bookmarks_provider.dart';
 import 'state/notification_provider.dart';
 import 'services/notification_service/notification_models.dart';
+import 'services/acquisition_service/deferred_navigation_model.dart';
 import 'services/ad_service/ad_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'features/home/home_screen.dart';
@@ -155,7 +156,7 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
       final initialDeepLink = await acquisitionService.getInitialDeepLink();
       if (initialDeepLink != null && initialDeepLink.isNotEmpty) {
         if (ShortcutsNotifier.isTargetPermanentSite(initialDeepLink)) {
-          await ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot();
+          await ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot(customUrl: initialDeepLink);
         } else {
           final uri = Uri.tryParse(initialDeepLink);
           final host = uri?.host.replaceAll('www.', '') ?? 'Link';
@@ -173,7 +174,7 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
           ref.read(deferredNavigationPayloadProvider.notifier).setPayload(deferredPayload);
 
           if (ShortcutsNotifier.isTargetPermanentSite(deferredPayload.targetUrl)) {
-            await ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot();
+            await ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot(customUrl: deferredPayload.targetUrl);
           } else {
             final uri = Uri.tryParse(deferredPayload.targetUrl);
             final host = uri?.host.replaceAll('www.', '') ?? 'Featured';
@@ -205,14 +206,30 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
 
       // 5. Listen for incoming notification deep link taps
       final notifService = ref.read(notificationServiceProvider);
-      _notificationRouteSub = notifService.onNotificationRoute.listen((route) {
+      void handleNotificationRoute(DeepLinkRoute route) {
         if (route.routeType == DeepLinkRouteType.webNavigation &&
-            route.webUrl != null) {
-          ref.read(tabsProvider.notifier).openTab(url: route.webUrl!);
-          _router.push('/browser', extra: route.webUrl);
+            route.webUrl != null &&
+            route.webUrl!.isNotEmpty) {
+          final url = route.webUrl!;
+          if (ShortcutsNotifier.isTargetPermanentSite(url)) {
+            ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot();
+          }
+          ref.read(deferredNavigationPayloadProvider.notifier).setPayload(
+            DeferredNavigationPayload(
+              targetUrl: url,
+              campaign: 'push_notification',
+              receivedAt: DateTime.now(),
+              processed: true,
+            ),
+          );
+          ref.read(tabsProvider.notifier).openTab(url: url);
+          _router.go('/browser', extra: url);
         } else if (route.routeType == DeepLinkRouteType.internalNavigation &&
-            route.path != null) {
-          _router.push(route.path!);
+            route.path != null &&
+            route.path!.isNotEmpty) {
+          if (route.path != '/') {
+            _router.go(route.path!);
+          }
         } else if (route.routeType == DeepLinkRouteType.externalIntent &&
             route.webUrl != null) {
           final uri = Uri.tryParse(route.webUrl!);
@@ -220,7 +237,16 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
             launchUrl(uri, mode: LaunchMode.externalApplication);
           }
         }
-      });
+      }
+
+      _notificationRouteSub =
+          notifService.onNotificationRoute.listen(handleNotificationRoute);
+
+      if (notifService.pendingInitialRoute != null) {
+        final pending = notifService.pendingInitialRoute!;
+        notifService.clearPendingInitialRoute();
+        handleNotificationRoute(pending);
+      }
 
       // 6. Asynchronously initialize Notification Service without blocking UI
       unawaited(() async {
@@ -258,6 +284,18 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
     } else if (state == AppLifecycleState.resumed) {
       ref.read(appLockProvider.notifier).onAppResumed();
       ref.read(adServiceProvider).handleAppResume();
+
+      // Re-check notification permission on resume — handles the case where
+      // user enables notifications in Android Settings and returns to app
+      unawaited(() async {
+        try {
+          final notifService = ref.read(notificationServiceProvider);
+          await notifService.recheckPermissionAndReRegister();
+        } catch (e) {
+          debugPrint('[App] Notification re-registration on resume: $e');
+        }
+      }());
+
     } else if (state == AppLifecycleState.detached) {
       final policy = ref.read(settingsProvider).autoClearPolicy;
       if (policy == 'on_app_exit') {

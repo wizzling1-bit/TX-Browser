@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
 
 import 'notification_models.dart';
@@ -44,10 +45,26 @@ class NotificationService {
   /// Stream of validated deep link routes triggered when the user taps any notification.
   Stream<DeepLinkRoute> get onNotificationRoute => _routeController.stream;
 
+  DeepLinkRoute? _pendingInitialRoute;
+
+  /// Cached route from cold-start or early tap to ensure it is never dropped before listeners attach.
+  DeepLinkRoute? get pendingInitialRoute => _pendingInitialRoute;
+
+  void clearPendingInitialRoute() {
+    _pendingInitialRoute = null;
+  }
+
   bool _initialized = false;
   String? _installationId;
   String? _currentToken;
+  Future<void> Function(String token)? _persistFcmToken;
   StreamSubscription<String>? _tokenRefreshSub;
+
+  /// Returns the current active FCM token if acquired.
+  String? get currentToken => _currentToken;
+
+  /// Returns the persistent device installation ID.
+  String? get installationId => _installationId;
 
   // Channel definitions matching Android target guidelines
   static const String channelGeneral = 'tx_general';
@@ -63,13 +80,15 @@ class NotificationService {
     Future<void> Function(String token)? persistFcmToken,
   }) async {
     if (_initialized) return;
+    _persistFcmToken = persistFcmToken;
 
     try {
       // 1. Initialize Firebase if not already initialized
       try {
         await Firebase.initializeApp();
+        debugPrint('[FCM INIT] Step 1: Firebase.initializeApp() ✓');
       } catch (e) {
-        debugPrint('[NotificationService] Firebase already initialized or error: $e');
+        debugPrint('[FCM INIT] Step 1: Firebase already initialized: $e');
       }
 
       // 2. Setup stable installation identity
@@ -79,10 +98,14 @@ class NotificationService {
         if (persistInstallationId != null) {
           await persistInstallationId(_installationId!);
         }
+        debugPrint('[FCM INIT] Step 2: Generated new installation ID: $_installationId');
+      } else {
+        debugPrint('[FCM INIT] Step 2: Using stored installation ID: $_installationId');
       }
 
       // 3. Setup Android Notification Channels
       await _setupNotificationChannels();
+      debugPrint('[FCM INIT] Step 3: Notification channels created ✓');
 
       // 4. Initialize Local Notifications for foreground alerts
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -93,6 +116,7 @@ class NotificationService {
           _handleLocalNotificationTap(response.payload);
         },
       );
+      debugPrint('[FCM INIT] Step 4: Local notifications initialized ✓');
 
       // 5. Register background messaging handler
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -111,27 +135,45 @@ class NotificationService {
       final initialMessage = await _messaging.getInitialMessage();
       if (initialMessage != null) {
         _handleMessageTap(initialMessage);
+        debugPrint('[FCM INIT] Step 8: Cold-start message found ✓');
       }
 
-      // 9. Fetch FCM token and register with backend
-      await _syncTokenAndRegister(persistFcmToken);
+      // 9. Check if permission is already granted
+      bool isPermissionGranted = false;
+      try {
+        isPermissionGranted = await Permission.notification.isGranted;
+        if (!isPermissionGranted) {
+          final settings = await _messaging.getNotificationSettings();
+          isPermissionGranted = settings.authorizationStatus == AuthorizationStatus.authorized;
+        }
+      } catch (_) {}
+      debugPrint('[FCM INIT] Step 9: Notification permission granted = $isPermissionGranted');
 
-      // 10. Listen for token refresh events
+      // 10. Acquire FCM token, register with Supabase Cloud, and subscribe to topics
+      await acquireTokenAndRegister();
+
+      // 11. Listen for token refresh events (handles permission granted later)
       _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) async {
-        debugPrint('[FCM] Token refreshed: ${newToken.substring(0, 10)}...');
+        debugPrint('[FCM] Token refreshed: ${newToken.substring(0, newToken.length > 20 ? 20 : newToken.length)}...');
         _currentToken = newToken;
         if (persistFcmToken != null) {
           await persistFcmToken(newToken);
         }
         await _registerWithBackend(newToken);
+        try {
+          await _messaging.subscribeToTopic('tx_all');
+          await _messaging.subscribeToTopic('tx_updates');
+          await _messaging.subscribeToTopic('tx_security');
+        } catch (_) {}
       });
 
       _initialized = true;
-      debugPrint('[NotificationService] Initialized successfully. Installation: $_installationId');
+      debugPrint('[FCM INIT] ✅ Initialization complete. Installation: $_installationId, Token: ${_currentToken != null ? "YES" : "NO"}');
     } catch (e, stack) {
-      debugPrint('[NotificationService] Initialization error (non-fatal): $e\n$stack');
+      debugPrint('[FCM INIT] ❌ Fatal initialization error: $e\n$stack');
     }
   }
+
 
   /// Sets up Android notification channels with appropriate importance.
   Future<void> _setupNotificationChannels() async {
@@ -177,21 +219,6 @@ class NotificationService {
     }
   }
 
-  /// Obtains the current FCM token and registers the installation with the backend.
-  Future<void> _syncTokenAndRegister([Future<void> Function(String token)? onTokenObtained]) async {
-    try {
-      final token = await _messaging.getToken();
-      if (token != null && token.isNotEmpty) {
-        _currentToken = token;
-        if (onTokenObtained != null) {
-          await onTokenObtained(token);
-        }
-        await _registerWithBackend(token);
-      }
-    } catch (e) {
-      debugPrint('[NotificationService] Error fetching FCM token: $e');
-    }
-  }
 
   /// Sends device hardware and token registration to the backend server.
   Future<void> _registerWithBackend(String token) async {
@@ -224,6 +251,78 @@ class NotificationService {
     }
   }
 
+  /// Acquires the FCM token (with retries), registers with Supabase Cloud directly,
+  /// and subscribes to default broadcast topics.
+  Future<String?> acquireTokenAndRegister() async {
+    if (_installationId == null || _installationId!.isEmpty) {
+      _installationId = const Uuid().v4();
+    }
+
+    String? token;
+    for (int attempt = 1; attempt <= 4; attempt++) {
+      try {
+        token = await _messaging.getToken();
+        if (token != null && token.isNotEmpty) {
+          debugPrint('[FCM] Acquired FCM token (attempt $attempt): ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+          break;
+        }
+        debugPrint('[FCM] getToken returned null (attempt $attempt/4)');
+      } catch (e) {
+        debugPrint('[FCM] getToken error on attempt $attempt: $e');
+      }
+      if (attempt < 4) {
+        await Future<void>.delayed(Duration(seconds: attempt * 2));
+      }
+    }
+
+    if (token != null && token.isNotEmpty) {
+      _currentToken = token;
+      if (_persistFcmToken != null) {
+        await _persistFcmToken!(token);
+      }
+
+      // Direct sync to Supabase Cloud PostgREST
+      await _registerWithBackend(token);
+
+      // Subscribe to topics
+      try {
+        await _messaging.subscribeToTopic('tx_all');
+        await _messaging.subscribeToTopic('tx_updates');
+        await _messaging.subscribeToTopic('tx_security');
+        debugPrint('[FCM] Subscribed to default topics: tx_all, tx_updates, tx_security ✓');
+      } catch (e) {
+        debugPrint('[FCM] Error subscribing to topics: $e');
+      }
+    } else {
+      debugPrint('[FCM] ⚠️ Failed to acquire token after 4 attempts');
+    }
+
+    return token;
+  }
+
+  /// Called when app resumes from background or after permission is granted.
+  /// If the user granted notification permission via Android Settings or system dialog,
+  /// this picks up the permission state, acquires the token, registers with Supabase,
+  /// and subscribes to topics.
+  Future<void> recheckPermissionAndReRegister() async {
+    try {
+      final isGranted = await Permission.notification.isGranted;
+      final settings = await _messaging.getNotificationSettings();
+      final isAuthorized = isGranted || settings.authorizationStatus == AuthorizationStatus.authorized;
+
+      debugPrint('[FCM Resume] Notification authorization check: isAuthorized=$isAuthorized, isGranted=$isGranted');
+      if (!isAuthorized) return;
+
+      if (_installationId == null || _installationId!.isEmpty) {
+        _installationId = const Uuid().v4();
+      }
+
+      await acquireTokenAndRegister();
+    } catch (e) {
+      debugPrint('[FCM Resume] Re-registration error (safe): $e');
+    }
+  }
+
   /// Intercepts foreground message and shows a controlled local notification
   /// on the appropriate Android channel without disrupting active browsing.
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
@@ -237,6 +336,20 @@ class NotificationService {
 
     final channelId = _resolveChannelId(payload.notificationType);
 
+    final List<AndroidNotificationAction> actions = [];
+    if (payload.destinationType == DestinationType.webUrl ||
+        (payload.destinationValue != null &&
+            payload.destinationValue!.trim().isNotEmpty)) {
+      actions.add(
+        const AndroidNotificationAction(
+          'open_action',
+          'Open Link',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+      );
+    }
+
     final androidDetails = AndroidNotificationDetails(
       channelId,
       _getChannelName(channelId),
@@ -246,6 +359,7 @@ class NotificationService {
           : Importance.defaultImportance,
       priority: Priority.defaultPriority,
       icon: '@mipmap/ic_launcher',
+      actions: actions.isNotEmpty ? actions : null,
     );
 
     final details = NotificationDetails(android: androidDetails);
@@ -318,6 +432,8 @@ class NotificationService {
     final route = NotificationDeepLinkHandler.resolveRoute(payload);
     debugPrint('[NotificationService] Routing notification to: ${route.path ?? route.webUrl}');
 
+    _pendingInitialRoute = route;
+
     // Track open event with backend asynchronously
     if (_installationId != null && payload.notificationId.isNotEmpty) {
       _repository.trackNotificationOpen(
@@ -329,19 +445,49 @@ class NotificationService {
     _routeController.add(route);
   }
 
-  /// Requests user permission for notifications (Android 13+).
-  Future<NotificationSettings> requestPermission() async {
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+  /// Requests user permission for notifications using native Android OS dialog (Android 13+)
+  /// and automatically acquires the FCM token, registers with Supabase Cloud,
+  /// and subscribes to default broadcast topics.
+  Future<bool> requestPermission() async {
+    bool isGranted = false;
+    try {
+      // 1. Trigger the native Android 13+ OS permission dialog using permission_handler
+      final status = await Permission.notification.request();
+      isGranted = status.isGranted;
+      debugPrint('[FCM Request] Permission.notification.request() outcome: $status');
 
-    if (_currentToken != null) {
-      await _registerWithBackend(_currentToken!);
+      // 2. Also invoke flutter_local_notifications plugin permission request as fallback
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final localGranted = await androidPlugin?.requestNotificationsPermission();
+      if (localGranted == true) {
+        isGranted = true;
+      }
+
+      // 3. Keep FirebaseMessaging settings aligned
+      try {
+        final settings = await _messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+        if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+          isGranted = true;
+        }
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('[NotificationService] Error requesting notification permission: $e');
     }
 
-    return settings;
+    debugPrint('[NotificationService] Final permission granted: $isGranted');
+
+    // 4. If permission granted, acquire token and register to cloud immediately
+    if (isGranted) {
+      await acquireTokenAndRegister();
+    }
+
+    return isGranted;
   }
 
   /// Subscribes to an approved broadcast topic.

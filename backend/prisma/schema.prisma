@@ -198,3 +198,21 @@ model AdminAuditLog {
   @@index([action])
   @@map("admin_audit_logs")
 }
+
+model CampaignBacklink {
+  id           String    @id @default(uuid())
+  title        String
+  targetUrl    String    @map("target_url")
+  campaignSlug String    @default("promo18") @map("campaign_slug")
+  packageName  String    @default("com.wizzling.tx_browser") @map("package_name")
+  fullBacklink String    @map("full_backlink")
+  deepLink     String?   @map("deep_link")
+  notes        String?
+  isActive     Boolean   @default(true) @map("is_active")
+  clickCount   Int       @default(0) @map("click_count")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("campaign_backlinks")
+}
+

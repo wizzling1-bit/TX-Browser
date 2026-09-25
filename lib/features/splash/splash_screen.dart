@@ -118,6 +118,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // Fluid, ultra-fast launch -> route to target URL or Home
     _timer = Timer(const Duration(milliseconds: 1450), () {
       if (mounted) {
+        // If already navigated away from splash (e.g. by notification or deep link), do not override
+        final location = GoRouterState.of(context).uri.toString();
+        if (location != '/splash') {
+          return;
+        }
+
         final deferred = ref.read(deferredNavigationPayloadProvider);
         if (deferred != null && deferred.targetUrl.isNotEmpty) {
           context.go('/browser', extra: deferred.targetUrl);

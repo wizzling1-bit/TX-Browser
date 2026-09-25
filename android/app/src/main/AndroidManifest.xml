@@ -107,14 +107,28 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- Required to query activities that can process text, speech recognition, etc. -->
+    <!-- Required to query activities that can process text, speech recognition, and Play Store Install Referrer -->
     <queries>
+        <!-- Google Play Store package for reliable InstallReferrer binding on Android 11+ -->
+        <package android:name="com.android.vending" />
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="market" />
         </intent>
     </queries>
 </manifest>

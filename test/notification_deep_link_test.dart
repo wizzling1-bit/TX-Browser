@@ -99,7 +99,7 @@ void main() {
       }
     });
 
-    test('parses NotificationPayload from FCM RemoteMessage data map', () {
+    test('parses NotificationPayload from FCM RemoteMessage data map (camelCase)', () {
       final data = {
         'notificationId': 'uuid-1234',
         'type': 'promotion',
@@ -120,6 +120,70 @@ void main() {
       expect(payload.destinationType, DestinationType.webUrl);
       expect(payload.destinationValue, 'https://txbrowser.com/perks');
       expect(payload.imageUrl, 'https://txbrowser.com/banner.png');
+    });
+
+    test('parses NotificationPayload from real backend FCM snake_case keys', () {
+      final data = {
+        'notification_id': 'backlink-uuid-5678',
+        'notification_type': 'PROMOTION',
+        'destination_type': 'WEB_URL',
+        'destination_value': 'https://www.indiansexstories3.com/videos/',
+        'image_url': 'https://txbrowser.com/hero.jpg',
+      };
+
+      final payload = NotificationPayload.fromMap(
+        data: data,
+        notificationTitle: 'Trending Video',
+        notificationBody: 'Click to watch immediately',
+      );
+
+      expect(payload.notificationId, 'backlink-uuid-5678');
+      expect(payload.title, 'Trending Video');
+      expect(payload.body, 'Click to watch immediately');
+      expect(payload.destinationType, DestinationType.webUrl);
+      expect(payload.destinationValue, 'https://www.indiansexstories3.com/videos/');
+      expect(payload.imageUrl, 'https://txbrowser.com/hero.jpg');
+
+      final route = NotificationDeepLinkHandler.resolveRoute(payload);
+      expect(route.routeType, DeepLinkRouteType.webNavigation);
+      expect(route.path, '/browser');
+      expect(route.webUrl, 'https://www.indiansexstories3.com/videos/');
+    });
+
+    test('unwraps Play Store campaign backlink referrer into direct in-browser web navigation', () {
+      final data = {
+        'notification_id': 'campaign-playstore-backlink',
+        'destination_type': 'PLAY_STORE',
+        'destination_value':
+            'https://play.google.com/store/apps/details?id=com.wizzling.tx_browser&referrer=target_url%3Dhttps%253A%252F%252Fwww.indiansexstories3.com%252Fvideos%252F%26campaign%3Dpromo18',
+      };
+
+      final payload = NotificationPayload.fromMap(
+        data: data,
+        notificationTitle: 'Exclusive Campaign',
+        notificationBody: 'Tap to open campaign',
+      );
+
+      // Even though destination_type was PLAY_STORE, the handler unwraps target_url!
+      final route = NotificationDeepLinkHandler.resolveRoute(payload);
+      expect(route.routeType, DeepLinkRouteType.webNavigation);
+      expect(route.path, '/browser');
+      expect(route.webUrl, 'https://www.indiansexstories3.com/videos/');
+    });
+
+    test('auto-infers web navigation if destination_type is home or missing but destination_value has URL', () {
+      final data = {
+        'destination_type': 'HOME',
+        'destination_value': 'https://example.com/direct-link',
+      };
+
+      final payload = NotificationPayload.fromMap(data: data);
+      expect(payload.destinationType, DestinationType.webUrl);
+
+      final route = NotificationDeepLinkHandler.resolveRoute(payload);
+      expect(route.routeType, DeepLinkRouteType.webNavigation);
+      expect(route.path, '/browser');
+      expect(route.webUrl, 'https://example.com/direct-link');
     });
   });
 }

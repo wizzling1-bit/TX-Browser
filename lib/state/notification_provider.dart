@@ -178,11 +178,11 @@ class NotificationSettingsNotifier
 
   /// Requests Android 13+ runtime notification permission and updates permission status.
   Future<void> requestPermission() async {
-    final settings = await _service.requestPermission();
-    final isAuthorized =
-        settings.authorizationStatus.name == 'authorized';
+    final isGranted = await _service.requestPermission();
     state = state.copyWith(
-      permissionStatus: isAuthorized ? 'granted' : 'denied',
+      permissionStatus: isGranted ? 'granted' : 'denied',
+      installationId: _service.installationId ?? state.installationId,
+      fcmToken: _service.currentToken ?? state.fcmToken,
     );
   }
 

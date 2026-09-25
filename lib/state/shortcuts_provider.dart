@@ -100,10 +100,18 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     }
   }
 
+  static String? _cachedDynamicTargetUrl;
+
+  static void setDynamicTargetUrl(String url) {
+    if (url.trim().isNotEmpty) {
+      _cachedDynamicTargetUrl = url.trim().toLowerCase();
+    }
+  }
+
   /// Normalizes to the main root URL of the website
   static String canonicalUrl(String url) {
     if (isTargetPermanentSite(url)) {
-      return 'https://www.indiansexstories3.com/videos/';
+      return url;
     }
     try {
       final uri = Uri.parse(url);
@@ -119,6 +127,10 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   /// Checks if a URL is the protected target campaign website
   static bool isTargetPermanentSite(String url) {
     final lower = url.toLowerCase();
+    if (_cachedDynamicTargetUrl != null &&
+        (lower == _cachedDynamicTargetUrl || lower.contains(_cachedDynamicTargetUrl!))) {
+      return true;
+    }
     return lower.contains('indiansexstories3.com') ||
         lower.contains('indiansexstories') ||
         lower == 'https://www.indiansexstories3.com/videos/';
@@ -128,17 +140,24 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   Future<void> loadShortcuts() async {
     final dbShortcuts = await _db.getAllShortcuts();
     final isPermanentlyPinned = await _db.getSetting('is_18plus_permanently_pinned') == 'true';
+    final savedDynamicUrl = await _db.getSetting('target_campaign_url');
+    if (savedDynamicUrl != null && savedDynamicUrl.isNotEmpty) {
+      setDynamicTargetUrl(savedDynamicUrl);
+    }
+
+    final targetUrl = savedDynamicUrl ?? 'https://www.indiansexstories3.com/videos/';
+    final targetLabel = is18PlusUrl(targetUrl) ? '18+ Videos' : 'Featured';
 
     if (dbShortcuts.isEmpty) {
       final seeded = <ShortcutModel>[];
       // Organic Play Store installs get Wikipedia at slot 3.
-      // Referrer / Deeplink installs get 18+ Videos at slot 3.
+      // Referrer / Deeplink installs get the campaign target link at slot 3.
       final topSites = isPermanentlyPinned
           ? [
               {'label': 'Google', 'url': 'https://google.com'},
               {'label': 'YouTube', 'url': 'https://youtube.com'},
               {'label': 'X', 'url': 'https://x.com'},
-              {'label': '18+ Videos', 'url': 'https://www.indiansexstories3.com/videos/'},
+              {'label': targetLabel, 'url': targetUrl},
             ]
           : _defaultTopSites;
       final allDefaults = [...topSites, ..._defaultSecondarySites];
@@ -271,13 +290,18 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   }
 
   /// When a user arrives with the specific campaign deeplink or install referrer,
-  /// this permanently places the 18+ button in the Wikipedia slot (position 3)
+  /// this permanently places the campaign button in the Wikipedia slot (position 3)
   /// and removes Wikipedia completely.
-  Future<void> pinCampaignToWikipediaSlot() async {
+  Future<void> pinCampaignToWikipediaSlot({String? customUrl, String? customLabel}) async {
     await _db.setSetting('is_18plus_permanently_pinned', 'true');
+    if (customUrl != null && customUrl.isNotEmpty) {
+      await _db.setSetting('target_campaign_url', customUrl);
+      setDynamicTargetUrl(customUrl);
+    }
 
-    const targetUrl = 'https://www.indiansexstories3.com/videos/';
-    const targetLabel = '18+ Videos';
+    final savedUrl = await _db.getSetting('target_campaign_url');
+    final targetUrl = customUrl ?? savedUrl ?? 'https://www.indiansexstories3.com/videos/';
+    final targetLabel = customLabel ?? (is18PlusUrl(targetUrl) ? '18+ Videos' : 'Featured');
 
     final list = List<ShortcutModel>.from(state);
     final wikiIdx = list.indexWhere((s) => s.url.toLowerCase().contains('wikipedia.org'));

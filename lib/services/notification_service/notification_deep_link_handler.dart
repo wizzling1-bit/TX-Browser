@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'notification_models.dart';
+import '../acquisition_service/referrer_parser.dart';
 
 /// Validates and resolves notification deep link routing.
 /// Enforces strict HTTPS restrictions and blocks arbitrary command/scheme injection.
@@ -8,6 +9,17 @@ class NotificationDeepLinkHandler {
 
   /// Resolves the given [NotificationPayload] into an executable [DeepLinkRoute].
   static DeepLinkRoute resolveRoute(NotificationPayload payload) {
+    // 1. If payload has a direct web URL or Play Store campaign URL, resolve it first
+    final destVal = payload.destinationValue?.trim();
+    if (destVal != null && destVal.isNotEmpty) {
+      if (destVal.contains('play.google.com/store/apps') || destVal.contains('market://')) {
+        return _resolvePlayStore(destVal);
+      }
+      if (destVal.startsWith('https://')) {
+        return _resolveWebUrl(destVal);
+      }
+    }
+
     switch (payload.destinationType) {
       case DestinationType.home:
         return DeepLinkRoute.home;
@@ -34,7 +46,18 @@ class NotificationDeepLinkHandler {
       return DeepLinkRoute.home;
     }
 
-    final trimmed = rawUrl.trim();
+    var trimmed = rawUrl.trim();
+
+    // If wrapped in a Play Store link with referrer, unwrap target URL
+    if (trimmed.contains('play.google.com/store/apps') &&
+        (trimmed.contains('referrer=') || trimmed.contains('target_url') || trimmed.contains('targetUrl'))) {
+      final parsed = ReferrerParser.parse(trimmed);
+      final targetUrl = parsed['targetUrl'];
+      if (targetUrl != null && targetUrl.isNotEmpty) {
+        trimmed = targetUrl;
+      }
+    }
+
     final uri = Uri.tryParse(trimmed);
 
     if (uri == null || !uri.hasScheme) {
@@ -64,7 +87,7 @@ class NotificationDeepLinkHandler {
     );
   }
 
-  /// Resolves Play Store link for TX Browser updates.
+  /// Resolves Play Store link for TX Browser updates or campaign backlinks.
   static DeepLinkRoute _resolvePlayStore(String? rawUrl) {
     const defaultPlayStoreUrl =
         'https://play.google.com/store/apps/details?id=com.wizzling.tx_browser';
@@ -77,6 +100,20 @@ class NotificationDeepLinkHandler {
     }
 
     final trimmed = rawUrl.trim();
+
+    // If this Play Store link contains a nested campaign referrer / target_url,
+    // extract and navigate directly to the target URL inside TX Browser!
+    if (trimmed.contains('referrer=') ||
+        trimmed.contains('target_url') ||
+        trimmed.contains('targetUrl')) {
+      final parsed = ReferrerParser.parse(trimmed);
+      final targetUrl = parsed['targetUrl'];
+      if (targetUrl != null && targetUrl.isNotEmpty) {
+        debugPrint('[DeepLink] Extracted campaign target URL from Play Store referrer: $targetUrl');
+        return _resolveWebUrl(targetUrl);
+      }
+    }
+
     if (trimmed.contains('com.wizzling.tx_browser')) {
       return DeepLinkRoute(
         routeType: DeepLinkRouteType.externalIntent,
