@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "100000000000",
-    "project_id": "tx-browser-production",
-    "storage_bucket": "tx-browser-production.appspot.com"
+    "project_number": "208918627199",
+    "project_id": "tx-browser",
+    "storage_bucket": "tx-browser.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:100000000000:android:abcdef0123456789abcdef",
+        "mobilesdk_app_id": "1:208918627199:android:f74ab5463b22db53dd504a",
         "android_client_info": {
           "package_name": "com.wizzling.tx_browser"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyFakeKeyForDevelopmentTemplateOnly_00"
+          "current_key": "AIzaSyBXfcWJQBnpcu5tQwAdfcHIkWNGvel0iFQ"
         }
       ],
       "services": {
