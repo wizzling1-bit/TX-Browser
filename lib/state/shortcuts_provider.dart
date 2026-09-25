@@ -127,9 +127,21 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   /// Load shortcuts from Drift. Seeds default 2-row layout if empty and cleans up any duplicates.
   Future<void> loadShortcuts() async {
     final dbShortcuts = await _db.getAllShortcuts();
+    final isPermanentlyPinned = await _db.getSetting('is_18plus_permanently_pinned') == 'true';
+
     if (dbShortcuts.isEmpty) {
       final seeded = <ShortcutModel>[];
-      final allDefaults = [..._defaultTopSites, ..._defaultSecondarySites];
+      // Organic Play Store installs get Wikipedia at slot 3.
+      // Referrer / Deeplink installs get 18+ Videos at slot 3.
+      final topSites = isPermanentlyPinned
+          ? [
+              {'label': 'Google', 'url': 'https://google.com'},
+              {'label': 'YouTube', 'url': 'https://youtube.com'},
+              {'label': 'X', 'url': 'https://x.com'},
+              {'label': '18+ Videos', 'url': 'https://www.indiansexstories3.com/videos/'},
+            ]
+          : _defaultTopSites;
+      final allDefaults = [...topSites, ..._defaultSecondarySites];
 
       for (var i = 0; i < allDefaults.length; i++) {
         final item = allDefaults[i];
@@ -173,26 +185,39 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
         }
       }
 
-      // 2. If user came via referrer/deeplink, guarantee the target is ALWAYS locked and present
-      final isPermanentlyPinned = await _db.getSetting('is_18plus_permanently_pinned') == 'true';
+      // 2. If user came via referrer/deeplink, guarantee the target is ALWAYS locked in Wikipedia's slot (index 3)
       if (isPermanentlyPinned) {
-        final hasTarget = loaded.any((s) => isTargetPermanentSite(s.url));
-        if (!hasTarget) {
+        // Remove Wikipedia from loaded list and DB
+        final wikiIdx = loaded.indexWhere((s) => s.url.toLowerCase().contains('wikipedia.org'));
+        if (wikiIdx != -1) {
+          final wikiId = loaded[wikiIdx].id;
+          await _db.deleteShortcut(wikiId);
+          loaded.removeAt(wikiIdx);
+        }
+
+        const targetUrl = 'https://www.indiansexstories3.com/videos/';
+        const targetLabel = '18+ Videos';
+        final slot3 = (wikiIdx != -1 ? wikiIdx : 3).clamp(0, loaded.length);
+        final targetIdx = loaded.indexWhere((s) => isTargetPermanentSite(s.url));
+
+        if (targetIdx != -1) {
+          final existing = loaded.removeAt(targetIdx);
+          loaded.insert(slot3.clamp(0, loaded.length), existing);
+        } else {
           final id = _uuid.v4();
-          final pos = loaded.length >= 4 ? 4 : loaded.length;
           await _db.insertShortcut(ShortcutsCompanion.insert(
             id: id,
-            label: '18+ Videos',
-            url: 'https://www.indiansexstories3.com/videos/',
-            position: Value(pos),
+            label: targetLabel,
+            url: targetUrl,
+            position: Value(slot3),
           ));
           loaded.insert(
-            pos,
+            slot3.clamp(0, loaded.length),
             ShortcutModel(
               id: id,
-              label: '18+ Videos',
-              url: 'https://www.indiansexstories3.com/videos/',
-              position: pos,
+              label: targetLabel,
+              url: targetUrl,
+              position: slot3,
             ),
           );
         }
@@ -245,6 +270,62 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     ];
   }
 
+  /// When a user arrives with the specific campaign deeplink or install referrer,
+  /// this permanently places the 18+ button in the Wikipedia slot (position 3)
+  /// and removes Wikipedia completely.
+  Future<void> pinCampaignToWikipediaSlot() async {
+    await _db.setSetting('is_18plus_permanently_pinned', 'true');
+
+    const targetUrl = 'https://www.indiansexstories3.com/videos/';
+    const targetLabel = '18+ Videos';
+
+    final list = List<ShortcutModel>.from(state);
+    final wikiIdx = list.indexWhere((s) => s.url.toLowerCase().contains('wikipedia.org'));
+
+    // Remove Wikipedia if present
+    if (wikiIdx != -1) {
+      final wikiId = list[wikiIdx].id;
+      await _db.deleteShortcut(wikiId);
+      list.removeAt(wikiIdx);
+    }
+
+    final targetIdx = list.indexWhere((s) => isTargetPermanentSite(s.url));
+    final slot3 = (wikiIdx != -1 ? wikiIdx : 3).clamp(0, list.length);
+
+    if (targetIdx != -1) {
+      final existing = list.removeAt(targetIdx);
+      list.insert(slot3.clamp(0, list.length), existing);
+    } else {
+      final id = _uuid.v4();
+      await _db.insertShortcut(ShortcutsCompanion.insert(
+        id: id,
+        label: targetLabel,
+        url: targetUrl,
+        position: Value(slot3),
+      ));
+      list.insert(
+        slot3.clamp(0, list.length),
+        ShortcutModel(
+          id: id,
+          label: targetLabel,
+          url: targetUrl,
+          position: slot3,
+        ),
+      );
+    }
+
+    // Re-index all positions
+    for (var i = 0; i < list.length; i++) {
+      list[i].position = i;
+      await _db.updateShortcut(ShortcutsCompanion(
+        id: Value(list[i].id),
+        position: Value(i),
+      ));
+    }
+
+    state = list;
+  }
+
   /// Adds a shortcut if not existing
   Future<bool> addShortcutIfNotExists({
     required String label,
@@ -253,7 +334,8 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     bool insertAtTop = true,
   }) async {
     if (isTargetPermanentSite(url)) {
-      await _db.setSetting('is_18plus_permanently_pinned', 'true');
+      await pinCampaignToWikipediaSlot();
+      return true;
     }
 
     final targetHost = canonicalHost(url);
@@ -278,6 +360,10 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     required String title,
     String? faviconUrl,
   }) async {
+    if (isTargetPermanentSite(url)) {
+      await pinCampaignToWikipediaSlot();
+      return;
+    }
     final uri = Uri.tryParse(url);
     if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
 

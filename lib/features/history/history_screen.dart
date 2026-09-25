@@ -12,6 +12,7 @@ import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/buttons/tx_pressable.dart';
 import '../../widgets/brand_icons.dart';
 import '../../widgets/ads/tx_native_ad_card.dart';
+import '../../widgets/dialogs/cache_cleaned_dialog.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../services/ad_service/ad_service.dart';
 
@@ -99,7 +100,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   ref.read(historyProvider.notifier).clearHistoryByRange('all_time');
                   Navigator.pop(ctx);
                   ref.read(adServiceProvider).recordUserAction();
-                  ref.read(adServiceProvider).maybeShowInterstitial();
+                  CacheCleanedDialog.show(context);
                 },
                 colors: colors,
               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/native.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -110,16 +111,18 @@ void main() {
       ];
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData.light().copyWith(
-            extensions: [TxColorScheme.light],
-          ),
-          home: Scaffold(
-            body: SearchSuggestionsPanel(
-              suggestions: testSuggestions,
-              isLoading: false,
-              onSelect: (s) => selectedSuggestion = s,
-              onInsert: (text) => insertedText = text,
+        ProviderScope(
+          child: MaterialApp(
+            theme: ThemeData.light().copyWith(
+              extensions: [TxColorScheme.light],
+            ),
+            home: Scaffold(
+              body: SearchSuggestionsPanel(
+                suggestions: testSuggestions,
+                isLoading: false,
+                onSelect: (s) => selectedSuggestion = s,
+                onInsert: (text) => insertedText = text,
+              ),
             ),
           ),
         ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:tx_browser/core/theme/tx_icons.dart';
 
@@ -9,6 +10,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/shapes.dart';
 import '../../core/theme/spacing.dart';
 import '../../services/ad_service/ad_config.dart';
+import '../../state/rewarded_perks_provider.dart';
 
 enum TxAdSizeVariant {
   mediumRectangle, // 300x250 (High eCPM)
@@ -18,13 +20,14 @@ enum TxAdSizeVariant {
 /// Production-ready In-Feed Ad Card component powered by Google Mobile Ads.
 ///
 /// Behaviour:
+/// - Checks 10-Minute Ad-Free Pass; if active, collapses immediately.
 /// - Loads AdMob banner/MREC ad on init.
 /// - Shows a subtle shimmer skeleton during loading.
 /// - On success: renders the ad with a clear "AD" label.
 /// - On failure: collapses to [SizedBox.shrink] — never shows a permanent placeholder.
 /// - Single deferred retry (30s) if initial load fails, then gives up.
 /// - Disposes ad properly on widget removal.
-class TxNativeAdCard extends StatefulWidget {
+class TxNativeAdCard extends ConsumerStatefulWidget {
   const TxNativeAdCard({
     super.key,
     this.adUnitId = AdConfig.bannerId,
@@ -37,10 +40,10 @@ class TxNativeAdCard extends StatefulWidget {
   final EdgeInsetsGeometry? margin;
 
   @override
-  State<TxNativeAdCard> createState() => _TxNativeAdCardState();
+  ConsumerState<TxNativeAdCard> createState() => _TxNativeAdCardState();
 }
 
-class _TxNativeAdCardState extends State<TxNativeAdCard>
+class _TxNativeAdCardState extends ConsumerState<TxNativeAdCard>
     with AutomaticKeepAliveClientMixin {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
@@ -127,6 +130,10 @@ class _TxNativeAdCardState extends State<TxNativeAdCard>
   Widget build(BuildContext context) {
     super.build(context);
 
+    // 10-Minute Ad-Free Pass: Collapse all in-app native and banner ads immediately
+    final isAdFree = ref.watch(rewardedPerksProvider).isAdFreeActive;
+    if (isAdFree) return const SizedBox.shrink();
+
     // Standard banner in docked bars stays collapsed until ready
     if (widget.variant == TxAdSizeVariant.standardBanner) {
       if (!_isAdLoaded || _bannerAd == null) {
@@ -194,7 +201,7 @@ class _TxNativeAdCardState extends State<TxNativeAdCard>
               ),
               const Spacer(),
               Icon(
-                LucideIcons.sparkles,
+                LucideIcons.star,
                 size: 13,
                 color: colors.primary.withValues(alpha: 0.6),
               ),

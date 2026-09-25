@@ -35,6 +35,10 @@ class AdConfig {
     this.historyNativeAd = true,
     this.downloadsNativeAd = true,
     this.bookmarksNativeAd = true,
+    this.downloadCompleteAd = true,
+    this.searchSuggestionsAd = true,
+    this.clearDataAd = true,
+    this.privateSessionEndedAd = true,
 
     // ── Prohibited placements (never enable) ─────────────────────────
     this.browserOverlayAds = false,
@@ -65,6 +69,10 @@ class AdConfig {
   final bool historyNativeAd;
   final bool downloadsNativeAd;
   final bool bookmarksNativeAd;
+  final bool downloadCompleteAd;
+  final bool searchSuggestionsAd;
+  final bool clearDataAd;
+  final bool privateSessionEndedAd;
 
   // ── Prohibited placements (enforced) ─────────────────────────────────
   final bool browserOverlayAds;
@@ -79,14 +87,4 @@ class AdConfig {
   static const String appOpenId = 'ca-app-pub-3435015056397165/3538513614';
   static const String rewardedId = 'ca-app-pub-3435015056397165/8658978359';
   static const String nativeId = 'ca-app-pub-3435015056397165/5210687936';
-
-  // ── Google AdMob official test Ad Unit IDs (Android) ─────────────────
-  static const String testAppId = 'ca-app-pub-3940256099942544~3347511713';
-  static const String testBannerId = 'ca-app-pub-3940256099942544/6300978111';
-  static const String testMrecId = 'ca-app-pub-3940256099942544/6300978111';
-  static const String testInterstitialId = 'ca-app-pub-3940256099942544/1033173712';
-  static const String testAppOpenId = 'ca-app-pub-3940256099942544/9257395921';
-  static const String testRewardedId = 'ca-app-pub-3940256099942544/5224354917';
-  static const String testRewardedInterstitialId = 'ca-app-pub-3940256099942544/5354046379';
-  static const String testNativeId = 'ca-app-pub-3940256099942544/2247696110';
 }

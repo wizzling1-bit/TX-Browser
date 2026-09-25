@@ -8,6 +8,7 @@ import 'app_open_ad_manager.dart';
 import 'banner_ad_manager.dart';
 import 'interstitial_ad_manager.dart';
 import 'rewarded_ad_manager.dart';
+import '../../state/rewarded_perks_provider.dart';
 
 export 'ad_config.dart';
 export 'ad_frequency_controller.dart';
@@ -43,6 +44,9 @@ class AdService {
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
+  /// Optional callback to check if user has unlocked an Ad-Free Pass.
+  bool Function()? isAdFreeChecker;
+
   /// Initializes the Mobile Ads SDK and preloads ads on supported platforms.
   Future<void> initialize() async {
     if (_isInitialized || kIsWeb) return;
@@ -71,11 +75,13 @@ class AdService {
 
   /// Evaluates frequency criteria and shows an interstitial if eligible.
   bool maybeShowInterstitial({VoidCallback? onDismissed}) {
+    if (isAdFreeChecker?.call() == true) return false;
     return interstitialManager.maybeShow(onDismissed: onDismissed);
   }
 
   /// Forces display of an interstitial (e.g. exit dialog).
   bool forceShowInterstitial({VoidCallback? onDismissed}) {
+    if (isAdFreeChecker?.call() == true) return false;
     return interstitialManager.forceShow(onDismissed: onDismissed);
   }
 
@@ -92,6 +98,7 @@ class AdService {
 
   /// Evaluates app resume criteria and shows an App Open ad if eligible.
   void handleAppResume({VoidCallback? onDismissed}) {
+    if (isAdFreeChecker?.call() == true) return;
     appOpenManager.showAdIfAvailable(onDismissed: onDismissed);
   }
 
@@ -105,8 +112,8 @@ class AdService {
 /// Global provider for [AdService].
 final adServiceProvider = Provider<AdService>((ref) {
   final service = AdService();
+  service.isAdFreeChecker = () => ref.read(rewardedPerksProvider).isAdFreeActive;
   service.initialize();
   ref.onDispose(service.dispose);
   return service;
 });
-

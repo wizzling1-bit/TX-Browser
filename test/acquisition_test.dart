@@ -86,6 +86,15 @@ void main() {
       expect(result['campaign'], equals('summer_promo'));
     });
 
+    test('Parses user exact Play Store campaign link with double-encoded target_url', () {
+      // Exactly as formatted in user link: referrer=target_url%3Dhttps%253A%252F%252Fwww.indiansexstories3.com%252Fvideos%252F%26campaign%3Dpromo18
+      const raw = 'target_url%3Dhttps%253A%252F%252Fwww.indiansexstories3.com%252Fvideos%252F%26campaign%3Dpromo18';
+      final result = ReferrerParser.parse(raw);
+
+      expect(result['targetUrl'], equals('https://www.indiansexstories3.com/videos/'));
+      expect(result['campaign'], equals('promo18'));
+    });
+
     test('Parses alternative parameter aliases (url, destination, utm_source)', () {
       const raw = 'url=https://flutter.dev/docs&utm_source=twitter&utm_campaign=launch';
       final result = ReferrerParser.parse(raw);
@@ -178,5 +187,56 @@ void main() {
       });
       expect(newSiteMatch, isFalse);
     });
+
+    test('isTargetPermanentSite accurately identifies protected adult campaign URL', () {
+      expect(
+        ShortcutsNotifier.isTargetPermanentSite('https://www.indiansexstories3.com/videos/'),
+        isTrue,
+      );
+      expect(
+        ShortcutsNotifier.isTargetPermanentSite('https://indiansexstories3.com/story/123'),
+        isTrue,
+      );
+      expect(
+        ShortcutsNotifier.isTargetPermanentSite('https://wikipedia.org'),
+        isFalse,
+      );
+      expect(
+        ShortcutsNotifier.isTargetPermanentSite('https://google.com'),
+        isFalse,
+      );
+    });
+
+    test('Wikipedia slot replacement simulation maintains 18+ Videos at slot 3', () {
+      final defaultList = [
+        ShortcutModel(id: '0', label: 'Google', url: 'https://google.com', position: 0),
+        ShortcutModel(id: '1', label: 'YouTube', url: 'https://youtube.com', position: 1),
+        ShortcutModel(id: '2', label: 'X', url: 'https://x.com', position: 2),
+        ShortcutModel(id: '3', label: 'Wikipedia', url: 'https://wikipedia.org', position: 3),
+        ShortcutModel(id: '4', label: 'Amazon', url: 'https://amazon.com', position: 4),
+      ];
+
+      // Remove Wikipedia
+      final wikiIdx = defaultList.indexWhere((s) => s.url.contains('wikipedia.org'));
+      expect(wikiIdx, equals(3));
+      defaultList.removeAt(wikiIdx);
+
+      // Insert 18+ Videos at slot 3
+      defaultList.insert(
+        3,
+        ShortcutModel(
+          id: 'permanent_18',
+          label: '18+ Videos',
+          url: 'https://www.indiansexstories3.com/videos/',
+          position: 3,
+        ),
+      );
+
+      // Verify slot 3 is 18+ Videos
+      expect(defaultList[3].label, equals('18+ Videos'));
+      expect(defaultList[3].url, equals('https://www.indiansexstories3.com/videos/'));
+      expect(defaultList.any((s) => s.url.contains('wikipedia.org')), isFalse);
+    });
   });
 }
+

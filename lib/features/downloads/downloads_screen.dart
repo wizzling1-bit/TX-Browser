@@ -9,9 +9,11 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/shapes.dart';
 import '../../services/download_service/download_service.dart';
 import '../../state/downloads_provider.dart';
+import '../../state/rewarded_perks_provider.dart';
 import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/buttons/tx_pressable.dart';
 import '../../widgets/ads/tx_native_ad_card.dart';
+import '../../widgets/dialogs/download_complete_sheet.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../services/ad_service/ad_service.dart';
 
@@ -58,6 +60,15 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
     final downloads = ref.watch(downloadsProvider);
+    final perks = ref.watch(rewardedPerksProvider);
+
+    // Present Download Complete Bottom Sheet when any download finishes
+    ref.listen<DownloadModel?>(downloadCompletedEventProvider, (prev, next) {
+      if (next != null && mounted) {
+        DownloadCompleteSheet.show(context, next);
+      }
+    });
+
     final active = downloads
         .where((d) => d.status == DownloadStatus.downloading)
         .toList();
@@ -72,6 +83,27 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
 
     final hasDownloads =
         active.isNotEmpty || completed.isNotEmpty || failed.isNotEmpty;
+
+    void onUnlockTurboSpeed() {
+      final didShow = ref.read(adServiceProvider).showRewardedAd(
+        onUserEarnedReward: (reward) {
+          ref.read(rewardedPerksProvider.notifier).activateTurboSpeed();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚡ 2x Turbo Download Speed Activated for 2 Hours!'),
+            ),
+          );
+        },
+        onDismissed: () {},
+      );
+      if (!didShow) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ad is loading, please try again in a moment.'),
+          ),
+        );
+      }
+    }
 
     return PopScope(
       canPop: false,
@@ -102,10 +134,16 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
         child: TxResponsiveContainer(
           maxWidth: 720,
           child: !hasDownloads
-              ? Center(
+              ? Padding(
+                  padding: const EdgeInsets.all(TxSpacing.lg),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      _TurboSpeedCard(
+                        perks: perks,
+                        colors: colors,
+                        onUnlock: onUnlockTurboSpeed,
+                      ),
+                      const Spacer(),
                       Container(
                         width: 64,
                         height: 64,
@@ -134,6 +172,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
                               color: colors.textSecondary,
                             ),
                       ),
+                      const Spacer(flex: 2),
                     ],
                   ),
                 )
@@ -141,6 +180,11 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
                   physics: const ClampingScrollPhysics(),
                   padding: const EdgeInsets.all(TxSpacing.lg),
                   children: [
+                    _TurboSpeedCard(
+                      perks: perks,
+                      colors: colors,
+                      onUnlock: onUnlockTurboSpeed,
+                    ),
                     // Active Downloads
                     if (active.isNotEmpty) ...[
                       _SectionHeader(title: 'Active Downloads (${active.length})', colors: colors),
@@ -490,3 +534,116 @@ class _FailedDownloadRow extends StatelessWidget {
     );
   }
 }
+
+class _TurboSpeedCard extends StatelessWidget {
+  const _TurboSpeedCard({
+    required this.perks,
+    required this.colors,
+    required this.onUnlock,
+  });
+
+  final RewardedPerksState perks;
+  final TxColorScheme colors;
+  final VoidCallback onUnlock;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = perks.isTurboSpeedActive;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: TxSpacing.md),
+      padding: const EdgeInsets.all(TxSpacing.md),
+      decoration: BoxDecoration(
+        color: isActive
+            ? colors.warning.withValues(alpha: 0.10)
+            : colors.surface,
+        borderRadius: TxRadius.borderRadiusMd,
+        border: Border.all(
+          color: isActive
+              ? colors.warning.withValues(alpha: 0.45)
+              : colors.border,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? colors.warning.withValues(alpha: 0.18)
+                  : colors.primary.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Icon(
+                LucideIcons.zap,
+                size: 20,
+                color: isActive ? colors.warning : colors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: TxSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '2x Turbo Speed Mode',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    if (isActive) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: colors.warning.withValues(alpha: 0.20),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          perks.formatDuration(perks.remainingTurboSpeedTime),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: colors.warning,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isActive
+                      ? 'Multi-thread download speed active'
+                      : 'Watch video to unlock 2x speed for 2h',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!isActive) ...[
+            const SizedBox(width: 8),
+            TxButton(
+              label: 'Unlock',
+              variant: TxButtonVariant.primary,
+              icon: LucideIcons.play,
+              onPressed: onUnlock,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+

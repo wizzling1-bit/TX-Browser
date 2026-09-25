@@ -214,9 +214,10 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
         completedAt: Value(completedAt),
       ));
 
+      DownloadModel? completedModel;
       state = state.map((item) {
         if (item.id == id) {
-          return item.copyWith(
+          final updated = item.copyWith(
             filePath: file.path,
             status: DownloadStatus.completed,
             progressPercent: 100,
@@ -224,9 +225,14 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
             sizeBytes: fileSize,
             completedAt: completedAt,
           );
+          completedModel = updated;
+          return updated;
         }
         return item;
       }).toList();
+      if (completedModel != null) {
+        ref.read(downloadCompletedEventProvider.notifier).emit(completedModel!);
+      }
     } catch (_) {
       await _db.updateDownload(DownloadsCompanion(
         id: Value(id),
@@ -300,6 +306,9 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
                 progressPercent: Value(updated.progressPercent),
                 completedAt: Value(updated.completedAt),
               ));
+              if (isFinished) {
+                ref.read(downloadCompletedEventProvider.notifier).emit(updated);
+              }
             }
 
             updatedList.add(updated);
@@ -407,4 +416,23 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
 
 final downloadsProvider = NotifierProvider<DownloadsNotifier, List<DownloadModel>>(
   DownloadsNotifier.new,
+);
+
+/// Notifier broadcasting the most recently completed download for bottom sheet display.
+class DownloadCompleteEventNotifier extends Notifier<DownloadModel?> {
+  @override
+  DownloadModel? build() => null;
+
+  void emit(DownloadModel model) {
+    state = model;
+  }
+
+  void reset() {
+    state = null;
+  }
+}
+
+final downloadCompletedEventProvider =
+    NotifierProvider<DownloadCompleteEventNotifier, DownloadModel?>(
+  DownloadCompleteEventNotifier.new,
 );

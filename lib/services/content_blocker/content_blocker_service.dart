@@ -297,6 +297,32 @@ class ContentBlockerService {
             iframe[src*="juicyads"],
             iframe[src*="adsterra"],
             iframe[src*="doubleclick"],
+            iframe[src*="trafficstars"],
+            iframe[src*="trafficjunky"],
+            iframe[src*="eroadvertising"],
+            iframe[src*="twinred"],
+            iframe[src*="rollerads"],
+            iframe[src*="popmyads"],
+            iframe[src*="criteo"],
+            iframe[src*="outbrain"],
+            iframe[src*="taboola"],
+            ins.adsbygoogle,
+            div[id^="google_ads_"],
+            div[id^="aswift_"],
+            div[class*="popup_banner"],
+            div[class*="banner_popup"],
+            div[class*="floating-banner"],
+            div[id*="floating-banner"],
+            div[class*="sticky-bottom-banner"],
+            div[class*="footer-banner"],
+            div[class*="ad_box"],
+            div[class*="ad-box"],
+            div[class*="ad-holder"],
+            .ad-placement,
+            .ad-spot,
+            .ad-under-player,
+            .sponsored-content,
+            .textads,
             #taboola-below-article-thumbnails,
             #outbrain_widget_0,
             .trc_rbox_div,
@@ -353,7 +379,21 @@ class ContentBlockerService {
               lower.includes('traffichaus') ||
               lower.includes('plugrush') ||
               lower.includes('bet365') ||
-              lower.includes('streamate')
+              lower.includes('streamate') ||
+              lower.includes('trafficstars') ||
+              lower.includes('trafficjunky') ||
+              lower.includes('eroadvertising') ||
+              lower.includes('twinred') ||
+              lower.includes('rollerads') ||
+              lower.includes('popmyads') ||
+              lower.includes('propellerads') ||
+              lower.includes('richads') ||
+              lower.includes('criteo') ||
+              lower.includes('outbrain') ||
+              lower.includes('taboola') ||
+              lower.includes('mgid') ||
+              lower.includes('revcontent') ||
+              lower.includes('adcash')
             ) {
               console.warn('[TxShield] Blocked ad window.open:', url);
               return null;
@@ -378,8 +418,17 @@ class ContentBlockerService {
         // ── 3. Dynamic DOM Overlay & Invisible Click Trap Cleaner ──
         function cleanOverlaysAndClickTraps() {
           try {
+            // Defuse known popunder queues and click hijack globals
+            try {
+              window._pop = undefined;
+              window._pao = undefined;
+              window.__mfAds = undefined;
+              window._asg = undefined;
+              window.popns = undefined;
+            } catch(_) {}
+
             // Collapse ad iframes and known ad anchor wrappers immediately
-            const adIframes = document.querySelectorAll('iframe[src*="videobaba"], iframe[src*="ronracepub"], iframe[src*="blazingserver"], iframe[src*="revive"], iframe[src*="doubleclick"], iframe[src*="exoclick"], iframe[src*="juicyads"], iframe[src*="adsterra"], iframe[src*="adservice"], iframe[src*="realsrv"], iframe[src*="tsyndicate"], iframe[src*="adcash"], iframe[src*="popads"], iframe[src*="monetag"], iframe[src*="clickadu"], iframe[src*="highcpm"], iframe[src*="wpadmngr"], iframe[src*="onclick"]');
+            const adIframes = document.querySelectorAll('iframe[src*="videobaba"], iframe[src*="ronracepub"], iframe[src*="blazingserver"], iframe[src*="revive"], iframe[src*="doubleclick"], iframe[src*="exoclick"], iframe[src*="juicyads"], iframe[src*="adsterra"], iframe[src*="adservice"], iframe[src*="realsrv"], iframe[src*="tsyndicate"], iframe[src*="adcash"], iframe[src*="popads"], iframe[src*="monetag"], iframe[src*="clickadu"], iframe[src*="highcpm"], iframe[src*="wpadmngr"], iframe[src*="onclick"], iframe[src*="trafficstars"], iframe[src*="trafficjunky"], iframe[src*="eroadvertising"], iframe[src*="twinred"], iframe[src*="rollerads"], iframe[src*="popmyads"]');
             for (let i = 0; i < adIframes.length; i++) {
               adIframes[i].remove();
             }

@@ -1,23 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tx_browser/core/theme/theme_data.dart';
 import 'package:tx_browser/services/ad_service/ad_service.dart';
 import 'package:tx_browser/widgets/ads/tx_native_ad_card.dart';
 
 void main() {
   group('AdConfig & Constants Tests', () {
-    test('Has valid test ad unit IDs for development', () {
-      expect(AdConfig.testBannerId, isNotEmpty);
-      expect(AdConfig.testBannerId, contains('ca-app-pub-3940256099942544'));
+    test('Has valid production AdMob unit IDs', () {
+      expect(AdConfig.appId, isNotEmpty);
+      expect(AdConfig.appId, startsWith('ca-app-pub-3435015056397165~'));
 
-      expect(AdConfig.testInterstitialId, isNotEmpty);
-      expect(AdConfig.testInterstitialId, contains('ca-app-pub-3940256099942544'));
+      expect(AdConfig.bannerId, isNotEmpty);
+      expect(AdConfig.bannerId, startsWith('ca-app-pub-3435015056397165/'));
 
-      expect(AdConfig.testNativeId, isNotEmpty);
-      expect(AdConfig.testNativeId, contains('ca-app-pub-3940256099942544'));
+      expect(AdConfig.interstitialId, isNotEmpty);
+      expect(AdConfig.interstitialId, startsWith('ca-app-pub-3435015056397165/'));
 
-      expect(AdConfig.testAppOpenId, isNotEmpty);
-      expect(AdConfig.testAppOpenId, contains('ca-app-pub-3940256099942544'));
+      expect(AdConfig.nativeId, isNotEmpty);
+      expect(AdConfig.nativeId, startsWith('ca-app-pub-3435015056397165/'));
+
+      expect(AdConfig.appOpenId, isNotEmpty);
+      expect(AdConfig.appOpenId, startsWith('ca-app-pub-3435015056397165/'));
+
+      expect(AdConfig.rewardedId, isNotEmpty);
+      expect(AdConfig.rewardedId, startsWith('ca-app-pub-3435015056397165/'));
     });
 
     test('Default config has safe policy settings and placement flags', () {
@@ -39,6 +46,10 @@ void main() {
       expect(config.historyNativeAd, isTrue);
       expect(config.downloadsNativeAd, isTrue);
       expect(config.bookmarksNativeAd, isTrue);
+      expect(config.downloadCompleteAd, isTrue);
+      expect(config.searchSuggestionsAd, isTrue);
+      expect(config.clearDataAd, isTrue);
+      expect(config.privateSessionEndedAd, isTrue);
 
       // Prohibited placement flags
       expect(config.browserOverlayAds, isFalse);
@@ -171,10 +182,12 @@ void main() {
   group('TxNativeAdCard Widget Tests', () {
     testWidgets('Renders properly within TxTheme', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: TxTheme.light(),
-          home: const Scaffold(
-            body: TxNativeAdCard(),
+        ProviderScope(
+          child: MaterialApp(
+            theme: TxTheme.light(),
+            home: const Scaffold(
+              body: TxNativeAdCard(),
+            ),
           ),
         ),
       );

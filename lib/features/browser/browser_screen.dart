@@ -33,6 +33,7 @@ import '../../widgets/search/search_suggestions_panel.dart';
 import '../../widgets/browser/find_in_page_bar.dart';
 import '../../widgets/browser/shield_dashboard_sheet.dart';
 import '../../widgets/dialogs/pin_shortcut_dialog.dart';
+import '../../widgets/dialogs/download_complete_sheet.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../services/ad_service/ad_service.dart';
 
@@ -688,6 +689,13 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
     final tabCount = ref.watch(tabsProvider.select((s) => s.count));
     final suggestionsState = ref.watch(suggestionsProvider);
     final isBookmarked = ref.watch(isBookmarkedProvider(_currentUrl));
+
+    // Present Download Complete Bottom Sheet when any background download finishes
+    ref.listen<DownloadModel?>(downloadCompletedEventProvider, (prev, next) {
+      if (next != null && mounted) {
+        DownloadCompleteSheet.show(context, next);
+      }
+    });
 
     return PopScope(
       canPop: false,

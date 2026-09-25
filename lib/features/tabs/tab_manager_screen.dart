@@ -13,6 +13,7 @@ import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/buttons/tx_pressable.dart';
 import '../../widgets/cards/tab_card.dart';
 import '../../widgets/ads/tx_native_ad_card.dart';
+import '../../widgets/dialogs/private_session_ended_sheet.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../services/ad_service/ad_service.dart';
 
@@ -542,7 +543,11 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
               Navigator.pop(ctx);
               ref.read(tabsProvider.notifier).closeAllTabs(isPrivate: isPrivate);
               ref.read(adServiceProvider).recordUserAction();
-              ref.read(adServiceProvider).maybeShowInterstitial();
+              if (isPrivate) {
+                PrivateSessionEndedSheet.show(context);
+              } else {
+                ref.read(adServiceProvider).maybeShowInterstitial();
+              }
             },
             child: const Text('Close All'),
           ),

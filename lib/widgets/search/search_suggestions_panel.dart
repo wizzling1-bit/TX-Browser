@@ -5,6 +5,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/shapes.dart';
 import '../../core/theme/spacing.dart';
 import '../../services/suggestion_service/suggestion_model.dart';
+import '../ads/tx_native_ad_card.dart';
 import '../buttons/tx_pressable.dart';
 
 /// Autocomplete suggestions dropdown panel for Tx Browser search bar.
@@ -73,6 +74,20 @@ class SearchSuggestionsPanel extends StatelessWidget {
                   endIndent: TxSpacing.md,
                   color: colors.borderSubtle,
                 ),
+            ],
+            if (suggestions.isNotEmpty) ...[
+              Divider(
+                height: 1,
+                thickness: 0.8,
+                color: colors.borderSubtle,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: TxNativeAdCard(
+                  variant: TxAdSizeVariant.standardBanner,
+                  margin: EdgeInsets.zero,
+                ),
+              ),
             ],
           ],
         ),

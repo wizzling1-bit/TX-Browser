@@ -55,3 +55,8 @@ backend/.env.local
 service-account*.json
 firebase-adminsdk*.json
 *.pem
+*.rar
+*.zip
+*.tar.gz
+*.keystore
+*.jks
