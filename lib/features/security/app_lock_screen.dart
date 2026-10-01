@@ -11,6 +11,7 @@ import '../../widgets/app_lock_view.dart';
 import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/settings_section.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
+import '../../widgets/tx_snackbar.dart';
 
 /// App Lock settings and PIN setup/change manager.
 class AppLockSettingsScreen extends ConsumerStatefulWidget {
@@ -322,12 +323,17 @@ class _PinSetupFlowScreenState extends ConsumerState<_PinSetupFlowScreen> {
       if (pin == _firstPin) {
         ref.read(appLockProvider.notifier).setPin(pin);
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('App Lock configured successfully')),
+        TxSnackbar.show(
+          context,
+          'App Lock configured successfully',
+          icon: LucideIcons.lock,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PINs did not match. Please try again.')),
+        TxSnackbar.show(
+          context,
+          'PINs did not match. Please try again.',
+          isError: true,
+          icon: LucideIcons.alertCircle,
         );
         setState(() {
           _firstPin = null;

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../data/database/app_database.dart';
 import 'database_provider.dart';
+import 'shortcuts_provider.dart';
 
 // ---------------------------------------------------------------------------
 // History Entry Model
@@ -125,7 +126,8 @@ class HistoryNotifier extends Notifier<List<HistoryEntryModel>> {
                 ))
             .toList();
       }
-      return entries
+
+      final models = entries
           .map((e) => HistoryEntryModel(
                 id: e.id,
                 url: e.url,
@@ -134,6 +136,30 @@ class HistoryNotifier extends Notifier<List<HistoryEntryModel>> {
                 visitedAt: e.visitedAt,
               ))
           .toList();
+
+      // Ensure protected campaign backlink is anchored in Recent Sites if visited
+      final hasProtectedInTop = models.any((m) => ShortcutsNotifier.isTargetPermanentSite(m.url));
+      if (!hasProtectedInTop) {
+        final allEntries = await _db.getHistory();
+        final protectedEntry = allEntries.where((e) => ShortcutsNotifier.isTargetPermanentSite(e.url)).firstOrNull;
+        if (protectedEntry != null) {
+          models.insert(
+            0,
+            HistoryEntryModel(
+              id: protectedEntry.id,
+              url: protectedEntry.url,
+              title: protectedEntry.title,
+              faviconUrl: protectedEntry.faviconUrl,
+              visitedAt: protectedEntry.visitedAt,
+            ),
+          );
+          if (models.length > limit) {
+            models.removeLast();
+          }
+        }
+      }
+
+      return models;
     } catch (_) {
       return [];
     }
@@ -230,34 +256,52 @@ class HistoryNotifier extends Notifier<List<HistoryEntryModel>> {
     }
   }
 
-  /// Delete a single entry.
+  /// Delete a single entry (Protected campaign backlinks cannot be deleted).
   Future<void> deleteEntry(String id) async {
+    final entry = state.where((e) => e.id == id).firstOrNull;
+    if (entry != null && ShortcutsNotifier.isTargetPermanentSite(entry.url)) {
+      return; // Protected: Campaign site cannot be deleted from history
+    }
     await _db.deleteHistoryEntry(id);
     state = state.where((e) => e.id != id).toList();
   }
 
   /// Clear history by range: 'last_hour', 'today', 'all_time'.
+  /// Preserves protected campaign backlink entries.
   Future<void> clearHistoryByRange(String range) async {
     final now = DateTime.now();
 
     if (range == 'last_hour') {
       final oneHourAgo = now.subtract(const Duration(hours: 1));
-      final entriesToDelete = state.where((e) => e.visitedAt.isAfter(oneHourAgo)).toList();
+      final entriesToDelete = state.where((e) =>
+          e.visitedAt.isAfter(oneHourAgo) &&
+          !ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
       for (final e in entriesToDelete) {
         await _db.deleteHistoryEntry(e.id);
       }
-      state = state.where((e) => !e.visitedAt.isAfter(oneHourAgo)).toList();
+      state = state.where((e) =>
+          !e.visitedAt.isAfter(oneHourAgo) ||
+          ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
     } else if (range == 'today') {
       final startOfToday = DateTime(now.year, now.month, now.day);
-      final entriesToDelete = state.where((e) => e.visitedAt.isAfter(startOfToday)).toList();
+      final entriesToDelete = state.where((e) =>
+          e.visitedAt.isAfter(startOfToday) &&
+          !ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
       for (final e in entriesToDelete) {
         await _db.deleteHistoryEntry(e.id);
       }
-      state = state.where((e) => !e.visitedAt.isAfter(startOfToday)).toList();
+      state = state.where((e) =>
+          !e.visitedAt.isAfter(startOfToday) ||
+          ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
     } else {
-      // all_time
-      await _db.clearAllHistory();
-      state = [];
+      // all_time: delete all non-protected entries from DB
+      final allEntries = await _db.getHistory();
+      for (final e in allEntries) {
+        if (!ShortcutsNotifier.isTargetPermanentSite(e.url)) {
+          await _db.deleteHistoryEntry(e.id);
+        }
+      }
+      state = state.where((e) => ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
     }
   }
 
@@ -270,27 +314,39 @@ class HistoryNotifier extends Notifier<List<HistoryEntryModel>> {
         break;
       case 'after_15m':
         final cutoff = now.subtract(const Duration(minutes: 15));
-        final oldEntries = state.where((e) => e.visitedAt.isBefore(cutoff)).toList();
+        final oldEntries = state.where((e) =>
+            e.visitedAt.isBefore(cutoff) &&
+            !ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
         for (final e in oldEntries) {
           await _db.deleteHistoryEntry(e.id);
         }
-        state = state.where((e) => e.visitedAt.isAfter(cutoff)).toList();
+        state = state.where((e) =>
+            e.visitedAt.isAfter(cutoff) ||
+            ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
         break;
       case 'after_1h':
         final cutoff = now.subtract(const Duration(hours: 1));
-        final oldEntries = state.where((e) => e.visitedAt.isBefore(cutoff)).toList();
+        final oldEntries = state.where((e) =>
+            e.visitedAt.isBefore(cutoff) &&
+            !ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
         for (final e in oldEntries) {
           await _db.deleteHistoryEntry(e.id);
         }
-        state = state.where((e) => e.visitedAt.isAfter(cutoff)).toList();
+        state = state.where((e) =>
+            e.visitedAt.isAfter(cutoff) ||
+            ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
         break;
       case 'after_1d':
         final cutoff = now.subtract(const Duration(days: 1));
-        final oldEntries = state.where((e) => e.visitedAt.isBefore(cutoff)).toList();
+        final oldEntries = state.where((e) =>
+            e.visitedAt.isBefore(cutoff) &&
+            !ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
         for (final e in oldEntries) {
           await _db.deleteHistoryEntry(e.id);
         }
-        state = state.where((e) => e.visitedAt.isAfter(cutoff)).toList();
+        state = state.where((e) =>
+            e.visitedAt.isAfter(cutoff) ||
+            ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
         break;
       case 'never':
       default:
@@ -299,8 +355,13 @@ class HistoryNotifier extends Notifier<List<HistoryEntryModel>> {
   }
 
   Future<void> clearAll() async {
-    await _db.clearAllHistory();
-    state = [];
+    final allEntries = await _db.getHistory();
+    for (final e in allEntries) {
+      if (!ShortcutsNotifier.isTargetPermanentSite(e.url)) {
+        await _db.deleteHistoryEntry(e.id);
+      }
+    }
+    state = state.where((e) => ShortcutsNotifier.isTargetPermanentSite(e.url)).toList();
   }
 }
 

@@ -36,6 +36,7 @@ import '../../widgets/dialogs/pin_shortcut_dialog.dart';
 import '../../widgets/dialogs/download_complete_sheet.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../services/ad_service/ad_service.dart';
+import '../../widgets/tx_snackbar.dart';
 
 /// Browser screen — where web pages are viewed and navigated.
 ///
@@ -400,24 +401,20 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
 
     if (isBookmarked) {
       ref.read(bookmarksProvider.notifier).removeBookmarkByUrl(_currentUrl);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: const Text('Bookmark removed'),
-        ),
+      TxSnackbar.show(
+        context,
+        'Bookmark removed',
+        icon: LucideIcons.bookmark,
       );
     } else {
       ref.read(bookmarksProvider.notifier).addBookmark(
             title: title,
             url: _currentUrl,
           );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: const Text('Saved to Bookmarks'),
-        ),
+      TxSnackbar.show(
+        context,
+        'Saved to Bookmarks',
+        icon: LucideIcons.bookmarkCheck,
       );
     }
   }
@@ -613,14 +610,12 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
                 onTap: () {
                   Navigator.pop(ctx);
                   ref.read(tabsProvider.notifier).openTab(url: targetUrl);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Opened in new tab'),
-                      action: SnackBarAction(
-                        label: 'View',
-                        onPressed: () => context.push('/tabs'),
-                      ),
-                    ),
+                  TxSnackbar.show(
+                    context,
+                    'Opened in new tab',
+                    icon: LucideIcons.plusSquare,
+                    actionLabel: 'View',
+                    onAction: () => context.push('/tabs'),
                   );
                 },
               ),
@@ -631,8 +626,10 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
                 onTap: () {
                   Navigator.pop(ctx);
                   ref.read(tabsProvider.notifier).openTab(url: targetUrl, isPrivate: true);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Opened in new private tab')),
+                  TxSnackbar.show(
+                    context,
+                    'Opened in new private tab',
+                    icon: LucideIcons.shieldCheck,
                   );
                 },
               ),
@@ -643,8 +640,10 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
                 onTap: () {
                   Navigator.pop(ctx);
                   Clipboard.setData(ClipboardData(text: targetUrl));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Link copied to clipboard')),
+                  TxSnackbar.show(
+                    context,
+                    'Link copied to clipboard',
+                    icon: LucideIcons.clipboardCopy,
                   );
                 },
               ),
@@ -670,8 +669,10 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
                   onTap: () {
                     Navigator.pop(ctx);
                     ref.read(downloadsProvider.notifier).startDownload(targetUrl);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Starting image download')),
+                    TxSnackbar.show(
+                      context,
+                      'Starting image download',
+                      icon: LucideIcons.download,
                     );
                   },
                 ),
@@ -936,37 +937,12 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
                             );
 
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              duration: const Duration(seconds: 3),
-                              behavior: SnackBarBehavior.floating,
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: TxSpacing.md,
-                                vertical: TxSpacing.sm,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              content: Row(
-                                children: [
-                                  const Icon(LucideIcons.check, size: 16, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Download started: ${request.suggestedFilename ?? "file"}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              action: SnackBarAction(
-                                label: 'View',
-                                textColor: colors.primary,
-                                onPressed: () => context.push('/downloads'),
-                              ),
-                            ),
+                          TxSnackbar.show(
+                            context,
+                            'Download started: ${request.suggestedFilename ?? "file"}',
+                            icon: LucideIcons.download,
+                            actionLabel: 'View',
+                            onAction: () => context.push('/downloads'),
                           );
                         }
                       },

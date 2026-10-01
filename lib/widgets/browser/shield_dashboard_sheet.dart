@@ -6,6 +6,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/shapes.dart';
 import '../../core/theme/spacing.dart';
 import '../../state/shield_provider.dart';
+import '../tx_snackbar.dart';
 
 /// Shows the Tx Shield Privacy Dashboard Bottom Sheet.
 Future<void> showTxShieldDashboard(BuildContext context, String currentHost) {
@@ -228,8 +229,10 @@ class ShieldDashboardSheet extends ConsumerWidget {
               ),
               onPressed: () {
                 ref.read(shieldProvider.notifier).resetSiteProtection(cleanHost);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Protection reset for $cleanHost')),
+                TxSnackbar.show(
+                  context,
+                  'Protection reset for $cleanHost',
+                  icon: LucideIcons.rotateCcw,
                 );
                 Navigator.pop(context);
               },

@@ -249,6 +249,8 @@ class PinnedSitesScreen extends ConsumerWidget {
                   },
                   itemBuilder: (context, index) {
                     final shortcut = shortcuts[index];
+                    final isProtected = ShortcutsNotifier.isTargetPermanentSite(shortcut.url);
+
                     return Container(
                       key: Key(shortcut.id),
                       margin: const EdgeInsets.only(bottom: TxSpacing.sm),
@@ -263,12 +265,31 @@ class PinnedSitesScreen extends ConsumerWidget {
                           size: 36,
                           borderRadius: 10,
                         ),
-                        title: Text(
-                          shortcut.label,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: colors.textPrimary,
-                          ),
+                        title: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                shortcut.label,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isProtected) ...[
+                              const SizedBox(width: 6),
+                              Tooltip(
+                                message: 'Protected shortcut',
+                                child: Icon(
+                                  LucideIcons.lock,
+                                  size: 13,
+                                  color: colors.primary,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         subtitle: Text(
                           shortcut.url,
@@ -282,27 +303,41 @@ class PinnedSitesScreen extends ConsumerWidget {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(
-                              icon: Icon(
-                                LucideIcons.filePenLine,
-                                size: 18,
-                                color: colors.textSecondary,
+                            if (!isProtected)
+                              IconButton(
+                                icon: Icon(
+                                  LucideIcons.filePenLine,
+                                  size: 18,
+                                  color: colors.textSecondary,
+                                ),
+                                onPressed: () =>
+                                    _showEditSheet(context, ref, shortcut),
                               ),
-                              onPressed: () =>
-                                  _showEditSheet(context, ref, shortcut),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                LucideIcons.trash2,
-                                size: 18,
-                                color: colors.error,
+                            if (isProtected)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                child: Tooltip(
+                                  message: 'Protected shortcut',
+                                  child: Icon(
+                                    LucideIcons.lock,
+                                    size: 18,
+                                    color: colors.textTertiary,
+                                  ),
+                                ),
+                              )
+                            else
+                              IconButton(
+                                icon: Icon(
+                                  LucideIcons.trash2,
+                                  size: 18,
+                                  color: colors.error,
+                                ),
+                                onPressed: () {
+                                  ref
+                                      .read(shortcutsProvider.notifier)
+                                      .removeShortcut(shortcut.id);
+                                },
                               ),
-                              onPressed: () {
-                                ref
-                                    .read(shortcutsProvider.notifier)
-                                    .removeShortcut(shortcut.id);
-                              },
-                            ),
                             ReorderableDragStartListener(
                               index: index,
                               child: Icon(

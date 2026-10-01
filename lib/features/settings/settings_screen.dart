@@ -23,6 +23,8 @@ import '../../widgets/settings_section.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../widgets/dialogs/cache_cleaned_dialog.dart';
 import '../../services/ad_service/ad_service.dart';
+import '../../widgets/browser/shield_dashboard_sheet.dart';
+import '../../widgets/tx_snackbar.dart';
 
 /// Redesigned commercial Settings Screen.
 class SettingsScreen extends ConsumerWidget {
@@ -71,6 +73,7 @@ class SettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: TxSpacing.xxl),
             children: [
             // ─── GENERAL ─────────────────────────────────────────
+            // ─── GENERAL ─────────────────────────────────────────
             SettingsSection(
               title: 'General',
               children: [
@@ -95,6 +98,13 @@ class SettingsScreen extends ConsumerWidget {
                 SettingsRow(
                   icon: LucideIcons.monitor,
                   title: 'Request Desktop Site by Default',
+                  subtitle: settings.desktopSiteDefault
+                      ? 'Desktop layout enabled'
+                      : 'Mobile layout by default',
+                  value: settings.desktopSiteDefault ? 'Enabled' : 'Disabled',
+                  statusColor: settings.desktopSiteDefault
+                      ? colors.primary
+                      : colors.textTertiary,
                   trailing: Switch(
                     value: settings.desktopSiteDefault,
                     onChanged: (v) {
@@ -107,7 +117,74 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
 
-            // ─── PUSH NOTIFICATIONS ──────────────────────────────
+            // ─── PRIVACY & SECURITY ──────────────────────────────
+            SettingsSection(
+              title: 'Privacy & Security',
+              children: [
+                SettingsRow(
+                  icon: LucideIcons.shieldCheck,
+                  title: 'TX Shield Content Blocker',
+                  subtitle: shieldState.isGlobalEnabled
+                      ? 'Ads, trackers and malicious redirects blocked'
+                      : 'Protection turned off',
+                  value: shieldState.isGlobalEnabled ? 'Protected' : 'Not protected',
+                  statusColor: shieldState.isGlobalEnabled
+                      ? colors.success
+                      : colors.warning,
+                  onTap: () => showTxShieldDashboard(context, ''),
+                  trailing: Switch(
+                    value: shieldState.isGlobalEnabled,
+                    onChanged: (v) {
+                      ref.read(shieldProvider.notifier).toggleGlobalShield(v);
+                    },
+                  ),
+                ),
+                SettingsRow(
+                  icon: LucideIcons.shieldAlert,
+                  title: 'Website Permissions',
+                  subtitle: 'Camera, microphone, and location per site',
+                  onTap: () => context.push('/site-permissions'),
+                ),
+                SettingsRow(
+                  icon: LucideIcons.lock,
+                  title: 'App Lock & Biometrics',
+                  subtitle: 'Passcode and biometric app protection',
+                  value: lockState.isEnabled ? 'Protected' : 'Disabled',
+                  statusColor: lockState.isEnabled ? colors.success : colors.textTertiary,
+                  onTap: () => context.push('/app-lock'),
+                ),
+                SettingsRow(
+                  icon: LucideIcons.globe,
+                  title: 'Native Proxy Controller',
+                  subtitle: 'Route traffic through secure proxy',
+                  value: proxyState.isEnabled ? 'Enabled' : 'Direct',
+                  statusColor: proxyState.isEnabled ? colors.primary : colors.textTertiary,
+                  onTap: () => context.push('/proxy'),
+                ),
+                SettingsRow(
+                  icon: LucideIcons.history,
+                  title: 'Browsing History',
+                  subtitle: 'Manage or search visited sites',
+                  onTap: () => context.push('/history'),
+                ),
+                SettingsRow(
+                  icon: LucideIcons.timerReset,
+                  title: 'Auto-Clear History',
+                  subtitle: 'Purge data on schedule',
+                  value: _formatAutoClearPolicy(settings.autoClearPolicy),
+                  onTap: () => _showAutoClearSelector(context, ref, settings),
+                ),
+                SettingsRow(
+                  icon: LucideIcons.trash2,
+                  title: 'Clear Browsing Data',
+                  subtitle: 'History, cookies, and cached storage',
+                  isDestructive: true,
+                  onTap: () => _showClearDataSheet(context, ref),
+                ),
+              ],
+            ),
+
+            // ─── NOTIFICATIONS ───────────────────────────────────
             SettingsSection(
               title: 'Notifications',
               children: [
@@ -115,6 +192,10 @@ class SettingsScreen extends ConsumerWidget {
                   icon: LucideIcons.bell,
                   title: 'Push Notifications',
                   subtitle: notifState.notificationsEnabled ? 'Enabled' : 'Disabled',
+                  value: notifState.notificationsEnabled ? 'ON' : 'OFF',
+                  statusColor: notifState.notificationsEnabled
+                      ? colors.success
+                      : colors.textTertiary,
                   trailing: Switch(
                     value: notifState.notificationsEnabled,
                     onChanged: (v) {
@@ -129,6 +210,7 @@ class SettingsScreen extends ConsumerWidget {
                     icon: LucideIcons.rotateCw,
                     title: 'Browser Updates',
                     subtitle: 'New features and version releases',
+                    value: notifState.updatesEnabled ? 'ON' : 'OFF',
                     trailing: Switch(
                       value: notifState.updatesEnabled,
                       onChanged: (v) {
@@ -142,6 +224,8 @@ class SettingsScreen extends ConsumerWidget {
                     icon: LucideIcons.shieldAlert,
                     title: 'Security Advisories',
                     subtitle: 'Important safe browsing advisories',
+                    value: notifState.securityEnabled ? 'ON' : 'OFF',
+                    statusColor: colors.warning,
                     trailing: Switch(
                       value: notifState.securityEnabled,
                       onChanged: (v) {
@@ -155,6 +239,7 @@ class SettingsScreen extends ConsumerWidget {
                     icon: LucideIcons.sparkles,
                     title: 'Promotions & Perks',
                     subtitle: 'Partner offers and perks',
+                    value: notifState.promotionsEnabled ? 'ON' : 'OFF',
                     trailing: Switch(
                       value: notifState.promotionsEnabled,
                       onChanged: (v) {
@@ -168,66 +253,15 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
 
-            // ─── PRIVACY & DATA ──────────────────────────────────
+            // ─── DOWNLOADS ───────────────────────────────────────
             SettingsSection(
-              title: 'Privacy & Data',
+              title: 'Downloads',
               children: [
                 SettingsRow(
-                  icon: LucideIcons.shieldAlert,
-                  title: 'Website Permissions',
-                  subtitle: 'Camera, microphone, and location per site',
-                  onTap: () => context.push('/site-permissions'),
-                ),
-                SettingsRow(
-                  icon: LucideIcons.history,
-                  title: 'Browsing History',
-                  subtitle: 'Manage or search visited sites',
-                  onTap: () => context.push('/history'),
-                ),
-                SettingsRow(
-                  icon: LucideIcons.timerReset,
-                  title: 'Auto-Clear History',
-                  value: _formatAutoClearPolicy(settings.autoClearPolicy),
-                  onTap: () => _showAutoClearSelector(context, ref, settings),
-                ),
-                SettingsRow(
-                  icon: LucideIcons.trash2,
-                  title: 'Clear Browsing Data',
-                  subtitle: 'History, cookies, and cached storage',
-                  isDestructive: true,
-                  onTap: () => _showClearDataSheet(context, ref),
-                ),
-              ],
-            ),
-
-            // ─── SECURITY ────────────────────────────────────────
-            SettingsSection(
-              title: 'Security & Protection',
-              children: [
-                SettingsRow(
-                  icon: LucideIcons.shieldCheck,
-                  title: 'Tx Shield Content Blocker',
-                  subtitle: 'Block known ad networks and trackers',
-                  trailing: Switch(
-                    value: shieldState.isGlobalEnabled,
-                    onChanged: (v) {
-                      ref.read(shieldProvider.notifier).toggleGlobalShield(v);
-                    },
-                  ),
-                ),
-                SettingsRow(
-                  icon: LucideIcons.lock,
-                  title: 'App Lock & Biometrics',
-                  value: lockState.isEnabled ? 'Active' : 'Disabled',
-                  statusColor: lockState.isEnabled ? colors.success : colors.textTertiary,
-                  onTap: () => context.push('/app-lock'),
-                ),
-                SettingsRow(
-                  icon: LucideIcons.globe,
-                  title: 'Native Proxy Controller',
-                  value: proxyState.isEnabled ? 'Enabled' : 'Direct',
-                  statusColor: proxyState.isEnabled ? colors.primary : colors.textTertiary,
-                  onTap: () => context.push('/proxy'),
+                  icon: LucideIcons.download,
+                  title: 'Download Manager',
+                  subtitle: 'View and manage downloaded files',
+                  onTap: () => context.push('/downloads'),
                 ),
               ],
             ),
@@ -245,20 +279,7 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
 
-            // ─── DOWNLOADS ───────────────────────────────────────
-            SettingsSection(
-              title: 'Downloads',
-              children: [
-                SettingsRow(
-                  icon: LucideIcons.download,
-                  title: 'Download Manager',
-                  subtitle: 'View and manage downloaded files',
-                  onTap: () => context.push('/downloads'),
-                ),
-              ],
-            ),
-
-            // ─── ABOUT ───────────────────────────────────────────
+            // ─── ABOUT & SUPPORT ─────────────────────────────────
             SettingsSection(
               title: 'About & Support',
               children: [
@@ -274,31 +295,28 @@ class SettingsScreen extends ConsumerWidget {
                   statusColor: perks.isAdFreeActive ? colors.success : colors.primary,
                   onTap: () {
                     if (perks.isAdFreeActive) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Ad-Free Pass is active! ${perks.formatDuration(perks.remainingAdFreeTime)} remaining.',
-                          ),
-                        ),
+                      TxSnackbar.show(
+                        context,
+                        'Ad-Free Pass is active! ${perks.formatDuration(perks.remainingAdFreeTime)} remaining.',
+                        icon: LucideIcons.checkCircle,
                       );
                       return;
                     }
                     final didShow = ref.read(adServiceProvider).showRewardedAd(
                       onUserEarnedReward: (reward) {
                         ref.read(rewardedPerksProvider.notifier).activateAdFreePass();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('🎉 10-Minute Ad-Free Pass Activated! All ads are now hidden.'),
-                          ),
+                        TxSnackbar.show(
+                          context,
+                          '🎉 10-Minute Ad-Free Pass Activated! All ads are now hidden.',
+                          icon: LucideIcons.sparkles,
                         );
                       },
                       onDismissed: () {},
                     );
                     if (!didShow) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Ad is loading, please try again in a moment.'),
-                        ),
+                      TxSnackbar.show(
+                        context,
+                        'Ad is loading, please try again in a moment.',
                       );
                     }
                   },
@@ -308,6 +326,12 @@ class SettingsScreen extends ConsumerWidget {
                   icon: LucideIcons.hardDrive,
                   title: 'Architecture',
                   value: 'Zero-Cloud Local SQLite',
+                ),
+                SettingsRow(
+                  icon: LucideIcons.shieldCheck,
+                  title: 'Privacy Policy',
+                  subtitle: 'On-device local-first privacy commitment',
+                  onTap: () => _showPrivacyPolicyDialog(context),
                 ),
                 SettingsRow(
                   icon: LucideIcons.fileText,
@@ -323,6 +347,31 @@ class SettingsScreen extends ConsumerWidget {
   ),
 );
 }
+
+  void _showPrivacyPolicyDialog(BuildContext context) {
+    final colors = Theme.of(context).extension<TxColorScheme>()!;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Privacy Policy',
+          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'TX Browser is built strictly local-first. Your search queries, browsing history, tabs, bookmarks, and downloads are stored exclusively on your device in encrypted local storage.\n\nNo telemetry, browsing tracking, or personal identifiers are collected or transmitted to any external servers.',
+          style: TextStyle(color: colors.textSecondary, height: 1.45),
+        ),
+        actions: [
+          TxButton(
+            label: 'Close',
+            onPressed: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showSearchEnginePicker(
     BuildContext context,

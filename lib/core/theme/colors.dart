@@ -51,9 +51,9 @@ class TxColorScheme extends ThemeExtension<TxColorScheme> {
   static const light = TxColorScheme(
     bg: Color(0xFFF2F5E8),
     surface: Color(0xFFFFFFFF),
-    surfaceAlt: Color(0xFFE9EFE0),
+    surfaceAlt: Color(0xFFEDF1D6), // #EDF1D6 warm subtle green surface
     primary: Color(0xFF4A6B48),
-    secondary: Color(0xFF7E9F76),
+    secondary: Color(0xFF609966), // #609966 accent green
     textPrimary: Color(0xFF1D261C),
     textSecondary: Color(0xFF5F705C),
     textTertiary: Color(0xFF8E9E8C),
@@ -62,7 +62,7 @@ class TxColorScheme extends ThemeExtension<TxColorScheme> {
     success: Color(0xFF3F8A4B),
     error: Color(0xFFC0392B),
     warning: Color(0xFFD48325),
-    privateAccent: Color(0xFF2E3D2A),
+    privateAccent: Color(0xFF40513B), // #40513B dark green
     overlayScrim: Color(0x661D261C),
     glassSurface: Color(0xD9FFFFFF),
     glassBorder: Color(0x66DFE6D5),
@@ -73,23 +73,23 @@ class TxColorScheme extends ThemeExtension<TxColorScheme> {
   // Dark Palette (Primary and Secondary accents swap deliberately)
   // ---------------------------------------------------------------------------
   static const dark = TxColorScheme(
-    bg: Color(0xFF0D110E),
-    surface: Color(0xFF131914),
-    surfaceAlt: Color(0xFF1B221C),
+    bg: Color(0xFF0B0F0C), // #0B0F0C OLED near-black surface
+    surface: Color(0xFF101610), // #101610 primary dark surface
+    surfaceAlt: Color(0xFF141B15), // #141B15 secondary dark surface
     primary: Color(0xFF69A86E),
-    secondary: Color(0xFF9DC08B),
+    secondary: Color(0xFF9DC08B), // #9DC08B sage green
     textPrimary: Color(0xFFFFFFFF),
     textSecondary: Color(0xFF8E9B8D),
     textTertiary: Color(0xFF617060),
-    border: Color(0xFF1F2820),
-    borderSubtle: Color(0xFF182019),
+    border: Color(0xFF192219), // #192219 restrained border
+    borderSubtle: Color(0xFF141B15),
     success: Color(0xFF6BC27B),
     error: Color(0xFFE57373),
     warning: Color(0xFFFFB74D),
     privateAccent: Color(0xFF40513B),
     overlayScrim: Color(0x990A0E0A),
-    glassSurface: Color(0xF2131914),
-    glassBorder: Color(0x80222E23),
+    glassSurface: Color(0xF2101610),
+    glassBorder: Color(0x80192219),
     isDark: true,
   );
 

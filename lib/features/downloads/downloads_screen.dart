@@ -16,6 +16,7 @@ import '../../widgets/ads/tx_native_ad_card.dart';
 import '../../widgets/dialogs/download_complete_sheet.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../services/ad_service/ad_service.dart';
+import '../../widgets/tx_snackbar.dart';
 
 /// Commercial-grade Downloads screen with active progress, file opening, sharing, and deletion.
 class DownloadsScreen extends ConsumerStatefulWidget {
@@ -88,19 +89,19 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
       final didShow = ref.read(adServiceProvider).showRewardedAd(
         onUserEarnedReward: (reward) {
           ref.read(rewardedPerksProvider.notifier).activateTurboSpeed();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⚡ 2x Turbo Download Speed Activated for 2 Hours!'),
-            ),
+          TxSnackbar.show(
+            context,
+            '2x Turbo Download Speed Activated for 2 Hours!',
+            icon: LucideIcons.zap,
           );
         },
         onDismissed: () {},
       );
       if (!didShow) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ad is loading, please try again in a moment.'),
-          ),
+        TxSnackbar.show(
+          context,
+          'Ad is loading, please try again in a moment.',
+          icon: LucideIcons.info,
         );
       }
     }
@@ -135,56 +136,61 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
           maxWidth: 720,
           child: !hasDownloads
               ? Padding(
-                  padding: const EdgeInsets.all(TxSpacing.lg),
-                  child: Column(
-                    children: [
-                      _TurboSpeedCard(
-                        perks: perks,
-                        colors: colors,
-                        onUnlock: onUnlockTurboSpeed,
-                      ),
-                      const Spacer(),
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: colors.surfaceAlt,
-                          shape: BoxShape.circle,
+                  padding: const EdgeInsets.symmetric(horizontal: TxSpacing.xxl),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 76,
+                          height: 76,
+                          decoration: BoxDecoration(
+                            color: colors.primary.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            LucideIcons.download,
+                            size: 36,
+                            color: colors.primary,
+                          ),
                         ),
-                        child: Icon(
-                          LucideIcons.download,
-                          size: 32,
-                          color: colors.textTertiary,
+                        const SizedBox(height: TxSpacing.lg),
+                        Text(
+                          'No Downloads Yet',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: colors.textPrimary,
+                              ),
+                          textAlign: TextAlign.center,
                         ),
-                      ),
-                      const SizedBox(height: TxSpacing.md),
-                      Text(
-                        'No Downloads Yet',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colors.textPrimary,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Downloaded files and documents will appear here.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                      ),
-                      const Spacer(flex: 2),
-                    ],
+                        const SizedBox(height: TxSpacing.xs),
+                        Text(
+                          'Files you download from TX Browser will appear here.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: TxSpacing.xl),
+                        TxButton(
+                          label: 'Start Browsing',
+                          icon: LucideIcons.globe,
+                          onPressed: () => context.go('/'),
+                        ),
+                      ],
+                    ),
                   ),
                 )
               : ListView(
                   physics: const ClampingScrollPhysics(),
                   padding: const EdgeInsets.all(TxSpacing.lg),
                   children: [
-                    _TurboSpeedCard(
-                      perks: perks,
-                      colors: colors,
-                      onUnlock: onUnlockTurboSpeed,
-                    ),
+                    if (active.isNotEmpty || perks.isTurboSpeedActive)
+                      _TurboSpeedCard(
+                        perks: perks,
+                        colors: colors,
+                        onUnlock: onUnlockTurboSpeed,
+                      ),
                     // Active Downloads
                     if (active.isNotEmpty) ...[
                       _SectionHeader(title: 'Active Downloads (${active.length})', colors: colors),

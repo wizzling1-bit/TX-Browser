@@ -7,6 +7,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/shapes.dart';
 import '../../state/history_provider.dart';
+import '../../state/shortcuts_provider.dart';
 import '../../state/tabs_provider.dart';
 import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/buttons/tx_pressable.dart';
@@ -228,27 +229,36 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           Text(
                             _searchQuery.isNotEmpty
                                 ? 'No matching history'
-                                : 'No browsing history',
+                                : 'No History Yet',
                             style: Theme.of(context)
                                 .textTheme
-                                .titleMedium
+                                .titleLarge
                                 ?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: colors.textPrimary,
                                 ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: TxSpacing.xs),
                           Text(
                             _searchQuery.isNotEmpty
                                 ? 'Try a different search term'
-                                : 'Sites you visit in regular tabs will appear here.',
+                                : 'Pages you visit will appear here.',
+                            textAlign: TextAlign.center,
                             style: Theme.of(context)
                                 .textTheme
-                                .bodySmall
+                                .bodyMedium
                                 ?.copyWith(
                                   color: colors.textSecondary,
                                 ),
                           ),
+                          if (_searchQuery.isEmpty) ...[
+                            const SizedBox(height: TxSpacing.lg),
+                            TxButton(
+                              label: 'Start Browsing',
+                              icon: LucideIcons.globe,
+                              onPressed: () => context.go('/'),
+                            ),
+                          ],
                         ],
                       ),
                     )
@@ -353,16 +363,22 @@ class _HistoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isProtected = ShortcutsNotifier.isTargetPermanentSite(entry.url);
+
     return Dismissible(
       key: Key(entry.id),
-      direction: DismissDirection.endToStart,
+      direction: isProtected ? DismissDirection.none : DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: TxSpacing.lg),
         color: colors.error.withValues(alpha: 0.15),
         child: Icon(LucideIcons.trash2, color: colors.error, size: 20),
       ),
-      onDismissed: (_) => onDelete(),
+      onDismissed: (_) {
+        if (!isProtected) {
+          onDelete();
+        }
+      },
       child: TxPressable(
         onTap: onTap,
         scaleDown: 0.98,
@@ -383,14 +399,31 @@ class _HistoryRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      entry.title,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colors.textPrimary,
-                            fontWeight: FontWeight.w500,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            entry.title,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: colors.textPrimary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                        ),
+                        if (isProtected) ...[
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: 'Protected campaign site',
+                            child: Icon(
+                              LucideIcons.lock,
+                              size: 13,
+                              color: colors.primary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(

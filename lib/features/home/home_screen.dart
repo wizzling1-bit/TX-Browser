@@ -23,10 +23,13 @@ import '../../widgets/ads/tx_native_ad_card.dart';
 import '../../services/ad_service/ad_service.dart';
 import '../../services/suggestion_service/suggestion_model.dart';
 import '../../state/suggestions_provider.dart';
+import '../../state/bookmarks_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../widgets/search/search_suggestions_panel.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../state/rewarded_perks_provider.dart';
 import '../../widgets/dialogs/notification_permission_sheet.dart';
+import '../../widgets/tx_snackbar.dart';
 
 /// Home screen — pixel-perfect implementation of Home.png design.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -214,71 +217,127 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _showPrivacyInfoSheet(BuildContext context) {
+
+  void _showShortcutContextMenu(ShortcutModel shortcut) {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
+    HapticFeedback.mediumImpact();
 
     showModalBottomSheet(
       context: context,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: TxRadius.borderRadiusSheet,
       ),
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(TxSpacing.xl),
+          padding: const EdgeInsets.symmetric(
+            horizontal: TxSpacing.lg,
+            vertical: TxSpacing.md,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: TxSpacing.md),
+                  decoration: BoxDecoration(
+                    color: colors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: colors.primary.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      LucideIcons.shieldCheck,
-                      size: 24,
-                      color: colors.primary,
-                    ),
-                  ),
+                  BrandIconBadge(name: shortcut.label, size: 38, borderRadius: 10),
                   const SizedBox(width: TxSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'On-Device Privacy',
-                          style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                          shortcut.label,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
                               ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          'Zero cloud tracking. On-device local privacy.',
-                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                          shortcut.url,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: colors.textSecondary,
                               ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: TxSpacing.lg),
-              Text(
-                'TX Browser operates locally on your device. Your browsing history, cookies, and tabs never leave your phone. No telemetry, no third-party behavioral tracking, and private tabs purge automatically upon exit.',
-                style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                      color: colors.textSecondary,
-                      height: 1.45,
-                    ),
+              const SizedBox(height: TxSpacing.md),
+              Divider(color: colors.borderSubtle, height: 1),
+              const SizedBox(height: TxSpacing.xs),
+              ListTile(
+                leading: Icon(LucideIcons.plusSquare, color: colors.primary, size: 20),
+                title: Text('Open in New Tab', style: TextStyle(color: colors.textPrimary, fontSize: 14)),
+                dense: true,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(tabsProvider.notifier).openTab(url: shortcut.url);
+                  context.go('/browser', extra: shortcut.url);
+                },
               ),
-              const SizedBox(height: TxSpacing.xl),
-              TxButton(
-                label: 'Got It',
-                isFullWidth: true,
-                onPressed: () => Navigator.pop(ctx),
+              ListTile(
+                leading: Icon(LucideIcons.shieldCheck, color: colors.warning, size: 20),
+                title: Text('Open in Private Tab', style: TextStyle(color: colors.textPrimary, fontSize: 14)),
+                dense: true,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(tabsProvider.notifier).openTab(url: shortcut.url, isPrivate: true);
+                  context.go('/browser', extra: shortcut.url);
+                },
+              ),
+              ListTile(
+                leading: Icon(LucideIcons.clipboardCopy, color: colors.textPrimary, size: 20),
+                title: Text('Copy Web Address', style: TextStyle(color: colors.textPrimary, fontSize: 14)),
+                dense: true,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Clipboard.setData(ClipboardData(text: shortcut.url));
+                  TxSnackbar.show(
+                    context,
+                    'Address copied to clipboard',
+                    icon: LucideIcons.clipboardCopy,
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(LucideIcons.edit3, color: colors.textPrimary, size: 20),
+                title: Text('Edit Shortcut', style: TextStyle(color: colors.textPrimary, fontSize: 14)),
+                dense: true,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showEditShortcutSheet(shortcut);
+                },
+              ),
+              ListTile(
+                leading: Icon(LucideIcons.trash2, color: colors.error, size: 20),
+                title: Text('Remove from Quick Access', style: TextStyle(color: colors.error, fontSize: 14, fontWeight: FontWeight.w600)),
+                dense: true,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(shortcutsProvider.notifier).removeShortcut(shortcut.id);
+                  TxSnackbar.show(
+                    context,
+                    'Removed ${shortcut.label}',
+                    icon: LucideIcons.trash2,
+                  );
+                },
               ),
             ],
           ),
@@ -287,46 +346,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _showHomeQuickMenu(BuildContext context, Offset globalPos) async {
-    final colors = Theme.of(context).extension<TxColorScheme>()!;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final position = RelativeRect.fromRect(
-      Rect.fromLTWH(globalPos.dx - 10, globalPos.dy + 15, 20, 20),
-      Offset.zero & overlay.size,
-    );
+  void _showEditShortcutSheet(ShortcutModel shortcut) {
+    final labelCtrl = TextEditingController(text: shortcut.label);
+    final urlCtrl = TextEditingController(text: shortcut.url);
 
-    final selected = await showMenu<String>(
+    showModalBottomSheet(
       context: context,
-      position: position,
-      elevation: 12,
-      shadowColor: Colors.black.withValues(alpha: 0.35),
-      color: colors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: colors.border.withValues(alpha: 0.75),
-          width: 1.2,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: TxRadius.borderRadiusSheet,
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + TxSpacing.lg,
+          left: TxSpacing.lg,
+          right: TxSpacing.lg,
+          top: TxSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Edit Shortcut',
+              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: TxSpacing.md),
+            TextField(
+              controller: labelCtrl,
+              decoration: InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(
+                  borderRadius: TxRadius.borderRadiusSm,
+                ),
+              ),
+            ),
+            const SizedBox(height: TxSpacing.md),
+            TextField(
+              controller: urlCtrl,
+              decoration: InputDecoration(
+                labelText: 'Web Address (URL)',
+                border: OutlineInputBorder(
+                  borderRadius: TxRadius.borderRadiusSm,
+                ),
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: TxSpacing.lg),
+            TxButton(
+              label: 'Save Changes',
+              isFullWidth: true,
+              onPressed: () {
+                if (labelCtrl.text.isNotEmpty && urlCtrl.text.isNotEmpty) {
+                  ref.read(shortcutsProvider.notifier).updateShortcut(
+                        id: shortcut.id,
+                        label: labelCtrl.text.trim(),
+                        url: urlCtrl.text.trim(),
+                      );
+                  Navigator.pop(ctx);
+                }
+              },
+            ),
+          ],
         ),
       ),
-      items: [
-        _buildPopupItem('ad_free_pass', LucideIcons.star, '10-Min Ad-Free Pass', colors),
-        const PopupMenuDivider(height: 1),
-        _buildPopupItem('new_tab', LucideIcons.plus, 'New tab', colors),
-        _buildPopupItem('new_private_tab', LucideIcons.shieldCheck, 'New private tab', colors),
-        const PopupMenuDivider(height: 1),
-        _buildPopupItem('bookmarks', LucideIcons.bookmark, 'Bookmarks', colors),
-        _buildPopupItem('history', LucideIcons.history, 'History', colors),
-        _buildPopupItem('downloads', LucideIcons.download, 'Downloads', colors),
-        const PopupMenuDivider(height: 1),
-        _buildPopupItem('shield', LucideIcons.shieldAlert, 'TX Shield & Privacy', colors),
-        _buildPopupItem('settings', LucideIcons.settings, 'Settings', colors),
-        const PopupMenuDivider(height: 1),
-        _buildPopupItem('exit', LucideIcons.power, 'Exit TX Browser', colors, isDestructive: true),
-      ],
     );
-
-    if (selected == null || !mounted) return;
-    _handleQuickAction(selected);
   }
 
   void _showHomeMenuSheet(BuildContext context) {
@@ -476,12 +562,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _onUnlockAdFreePass() {
     final perks = ref.read(rewardedPerksProvider);
     if (perks.isAdFreeActive) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Ad-Free Pass is active! ${perks.formatDuration(perks.remainingAdFreeTime)} remaining.',
-          ),
-        ),
+      TxSnackbar.show(
+        context,
+        'Ad-Free Pass is active! ${perks.formatDuration(perks.remainingAdFreeTime)} remaining.',
+        icon: LucideIcons.shieldCheck,
       );
       return;
     }
@@ -489,54 +573,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final didShow = ref.read(adServiceProvider).showRewardedAd(
       onUserEarnedReward: (reward) {
         ref.read(rewardedPerksProvider.notifier).activateAdFreePass();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 10-Minute Ad-Free Pass Activated! All in-app ads hidden.'),
-          ),
+        TxSnackbar.show(
+          context,
+          '10-Minute Ad-Free Pass Activated! All in-app ads hidden.',
+          icon: LucideIcons.sparkles,
         );
       },
       onDismissed: () {},
     );
     if (!didShow) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ad is loading, please try again in a moment.'),
-        ),
+      TxSnackbar.show(
+        context,
+        'Ad is loading, please try again in a moment.',
+        icon: LucideIcons.info,
       );
     }
-  }
-
-  PopupMenuItem<String> _buildPopupItem(
-    String value,
-    IconData icon,
-    String label,
-    TxColorScheme colors, {
-    bool isDestructive = false,
-  }) {
-    return PopupMenuItem<String>(
-      value: value,
-      height: 44,
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isDestructive ? colors.error : colors.textPrimary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isDestructive ? colors.error : colors.textPrimary,
-                fontSize: 14,
-                fontWeight: isDestructive ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -664,28 +715,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             children: [
                               _TopIconButton(
                                 icon: LucideIcons.shieldCheck,
-                                tooltip: 'Privacy & Shield',
-                                onTap: () => _showPrivacyInfoSheet(context),
+                                tooltip: 'TX Shield & Privacy',
+                                onTap: () => showTxShieldDashboard(context, ''),
                                 colors: colors,
                               ),
                               const SizedBox(width: TxSpacing.sm),
-                              Builder(
-                                builder: (btnContext) => _TopIconButton(
-                                  icon: LucideIcons.ellipsisVertical,
-                                  tooltip: 'Menu',
-                                  colors: colors,
-                                  onTap: () {
-                                    final box = btnContext.findRenderObject() as RenderBox?;
-                                    final pos = box != null
-                                        ? box.localToGlobal(Offset.zero)
-                                        : Offset.zero;
-                                    final size = box?.size ?? const Size(42, 42);
-                                    _showHomeQuickMenu(
-                                      context,
-                                      pos + Offset(size.width / 2, size.height),
-                                    );
-                                  },
-                                ),
+                              _TopIconButton(
+                                icon: LucideIcons.ellipsisVertical,
+                                tooltip: 'Menu',
+                                colors: colors,
+                                onTap: () => _showHomeMenuSheet(context),
                               ),
                             ],
                           ),
@@ -749,7 +788,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       fontWeight: FontWeight.w500,
                                     ),
                                     decoration: InputDecoration(
-                                      hintText: 'Search or type URL',
+                                      hintText: 'Search or enter address',
                                       hintStyle: TextStyle(
                                         color: colors.textSecondary
                                             .withValues(alpha: 0.7),
@@ -771,54 +810,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                                 // Clear X button when text is present
                                 if (_searchController.text.isNotEmpty)
-                                  IconButton(
-                                    icon: Icon(
-                                      LucideIcons.x,
-                                      size: 18,
-                                      color: colors.textSecondary,
+                                  SizedBox(
+                                    width: 44,
+                                    height: 44,
+                                    child: IconButton(
+                                      icon: Icon(
+                                        LucideIcons.x,
+                                        size: 18,
+                                        color: colors.textSecondary,
+                                      ),
+                                      tooltip: 'Clear text',
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        ref
+                                            .read(suggestionsProvider.notifier)
+                                            .clear();
+                                      },
                                     ),
-                                    tooltip: 'Clear text',
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      ref
-                                          .read(suggestionsProvider.notifier)
-                                          .clear();
-                                    },
                                   ),
                                 // QR Scan Button
-                                IconButton(
-                                  icon: Icon(
-                                    LucideIcons.scanLine,
-                                    size: 20,
-                                    color: colors.textSecondary,
+                                SizedBox(
+                                  width: 44,
+                                  height: 44,
+                                  child: IconButton(
+                                    icon: Icon(
+                                      LucideIcons.scanLine,
+                                      size: 20,
+                                      color: colors.textSecondary,
+                                    ),
+                                    tooltip: 'Scan QR code',
+                                    onPressed: _onQrTap,
                                   ),
-                                  tooltip: 'Scan QR code',
-                                  onPressed: _onQrTap,
                                 ),
                                 // Circular Green Mic Button
-                                TxPressable(
-                                  onTap: _onMicTap,
-                                  child: Container(
-                                    width: 42,
-                                    height: 42,
-                                    margin: const EdgeInsets.only(right: 4),
-                                    decoration: BoxDecoration(
-                                      color: colors.primary,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: colors.primary
-                                              .withValues(alpha: 0.3),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
+                                Semantics(
+                                  label: 'Voice search',
+                                  button: true,
+                                  child: TxPressable(
+                                    onTap: _onMicTap,
+                                    child: Container(
+                                      width: 44,
+                                      height: 44,
+                                      margin: const EdgeInsets.only(right: 3),
+                                      decoration: BoxDecoration(
+                                        color: colors.primary,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: colors.primary
+                                                .withValues(alpha: 0.3),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          LucideIcons.mic,
+                                          size: 19,
+                                          color: Colors.white,
                                         ),
-                                      ],
-                                    ),
-                                    child: const Center(
-                                      child: Icon(
-                                        LucideIcons.mic,
-                                        size: 18,
-                                        color: Colors.white,
                                       ),
                                     ),
                                   ),
@@ -887,16 +938,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                           TxPressable(
                             onTap: () => context.push('/pinned-sites'),
-                            child: Text(
-                              'Edit',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
-                                    color: colors.primary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: colors.surfaceAlt,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: colors.borderSubtle,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(LucideIcons.edit3, size: 12, color: colors.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Edit',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: colors.primary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
                                   ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -947,8 +1016,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 if (index < shortcuts.length && index < maxItems - 1) {
                                   final shortcut = shortcuts[index];
                                   return _QuickAccessItem(
-                                    label: shortcut.label,
+                                    shortcut: shortcut,
                                     onTap: () => _onShortcutTap(shortcut),
+                                    onLongPress: () => _showShortcutContextMenu(shortcut),
                                   );
                                 } else {
                                   return _AddQuickAccessItem(
@@ -1230,127 +1300,162 @@ class _AdFreePassPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = perks.isAdFreeActive;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive
-                ? colors.success.withValues(alpha: 0.10)
-                : colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
+    return Semantics(
+      label: isActive ? 'Ad-free pass active' : '10-minute ad-free pass',
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
               color: isActive
-                  ? colors.success.withValues(alpha: 0.45)
-                  : colors.primary.withValues(alpha: 0.28),
-              width: 1.1,
+                  ? colors.success.withValues(alpha: 0.08)
+                  : colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isActive
+                    ? colors.success.withValues(alpha: 0.35)
+                    : colors.border.withValues(alpha: 0.7),
+                width: 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: (isActive ? colors.success : colors.primary).withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: (isActive ? colors.success : colors.primary).withValues(alpha: 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: (isActive ? colors.success : colors.primary).withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(
-                    isActive ? LucideIcons.checkCircle : LucideIcons.star,
-                    size: 18,
-                    color: isActive ? colors.success : colors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          isActive ? 'Ad-Free Pass Active' : '10-Min Ad-Free Pass',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        if (isActive) ...[
-                          const SizedBox(width: 6),
+            child: isActive
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
-                              color: colors.success.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
+                              color: colors.success.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                LucideIcons.checkCircle,
+                                size: 16,
+                                color: colors.success,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Ad-Free Active',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: colors.success.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              perks.formatDuration(perks.remainingAdFreeTime),
+                              '${perks.formatDuration(perks.remainingAdFreeTime)} remaining',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: colors.success,
                               ),
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 1.5),
-                    Text(
-                      isActive
-                          ? 'All in-app native & interstitial ads hidden'
-                          : 'Watch 1 video to browse completely ad-free',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: colors.textSecondary,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? colors.success.withValues(alpha: 0.15)
-                      : colors.primary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (!isActive) ...[
-                      const Icon(LucideIcons.play, size: 12, color: Colors.white),
-                      const SizedBox(width: 4),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (perks.remainingAdFreeTime.inSeconds / 600.0).clamp(0.0, 1.0),
+                          backgroundColor: colors.success.withValues(alpha: 0.15),
+                          valueColor: AlwaysStoppedAnimation<Color>(colors.success),
+                          minHeight: 4,
+                        ),
+                      ),
                     ],
-                    Text(
-                      isActive ? 'Active' : 'Unlock',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: isActive ? colors.success : Colors.white,
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: colors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            LucideIcons.star,
+                            size: 15,
+                            color: colors.primary,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '10-Min Ad-Free Pass',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              'Watch without ads for 10 minutes',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Unlock',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: colors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            LucideIcons.chevronRight,
+                            size: 14,
+                            color: colors.primary,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),
@@ -1358,44 +1463,50 @@ class _AdFreePassPill extends StatelessWidget {
   }
 }
 
-
 class _QuickAccessItem extends StatelessWidget {
   const _QuickAccessItem({
-    required this.label,
+    required this.shortcut,
     required this.onTap,
+    required this.onLongPress,
   });
 
-  final String label;
+  final ShortcutModel shortcut;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
 
-    return TxPressable(
-      onTap: onTap,
-      scaleDown: 0.92,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          BrandIconBadge(
-            name: label,
-            size: 50,
-            borderRadius: 15,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
+    return Semantics(
+      label: 'Shortcut ${shortcut.label}',
+      button: true,
+      child: TxPressable(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        scaleDown: 0.92,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            BrandIconBadge(
+              name: shortcut.label,
+              size: 50,
+              borderRadius: 15,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              shortcut.label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1412,45 +1523,49 @@ class _AddQuickAccessItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TxPressable(
-      onTap: onTap,
-      scaleDown: 0.92,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: colors.bg,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: colors.border.withValues(alpha: 0.7),
-                width: 1,
+    return Semantics(
+      label: 'Add shortcut to Quick Access',
+      button: true,
+      child: TxPressable(
+        onTap: onTap,
+        scaleDown: 0.92,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: colors.bg,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: colors.border.withValues(alpha: 0.7),
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                LucideIcons.plus,
+                size: 22,
+                color: colors.primary,
               ),
             ),
-            child: Icon(
-              LucideIcons.plus,
-              size: 22,
-              color: colors.primary,
+            const SizedBox(height: 6),
+            Text(
+              'Add',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Add',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _RecentSiteRow extends StatelessWidget {
+class _RecentSiteRow extends ConsumerWidget {
   const _RecentSiteRow({
     required this.entry,
     required this.onTap,
@@ -1484,105 +1599,193 @@ class _RecentSiteRow extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return TxPressable(
-      onTap: onTap,
-      scaleDown: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: TxSpacing.md,
-          vertical: 12,
-        ),
-        child: Row(
-          children: [
-            BrandIconBadge(
-              name: entry.title,
-              size: 40,
-              borderRadius: 12,
-            ),
-            const SizedBox(width: TxSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.title,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14.5,
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Semantics(
+      label: 'Recent site ${entry.title}',
+      button: true,
+      child: TxPressable(
+        onTap: onTap,
+        scaleDown: 0.98,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: TxSpacing.md,
+            vertical: 12,
+          ),
+          child: Row(
+            children: [
+              BrandIconBadge(
+                name: entry.title,
+                size: 40,
+                borderRadius: 12,
+              ),
+              const SizedBox(width: TxSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: colors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.5,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _cleanHost(entry.url),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 12,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                _formatAgo(entry.visitedAt),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colors.textSecondary.withValues(alpha: 0.8),
+                      fontSize: 11.5,
+                    ),
+              ),
+              const SizedBox(width: 2),
+              PopupMenuButton<String>(
+                icon: Icon(
+                  LucideIcons.ellipsisVertical,
+                  size: 16,
+                  color: colors.textSecondary.withValues(alpha: 0.8),
+                ),
+                tooltip: 'More actions',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 190),
+                color: colors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: colors.border),
+                ),
+                onSelected: (value) async {
+                  switch (value) {
+                    case 'open':
+                      onTap();
+                      break;
+                    case 'open_new_tab':
+                      ref.read(tabsProvider.notifier).openTab(url: entry.url);
+                      context.go('/browser', extra: entry.url);
+                      break;
+                    case 'open_private':
+                      ref.read(tabsProvider.notifier).openTab(url: entry.url, isPrivate: true);
+                      context.go('/browser', extra: entry.url);
+                      break;
+                    case 'pin_quick_access':
+                      ref.read(shortcutsProvider.notifier).addShortcut(label: entry.title, url: entry.url);
+                      if (context.mounted) {
+                        TxSnackbar.show(context, 'Pinned to Quick Access', icon: LucideIcons.bookmarkCheck);
+                      }
+                      break;
+                    case 'bookmark':
+                      await ref.read(bookmarksProvider.notifier).addBookmark(title: entry.title, url: entry.url);
+                      if (context.mounted) {
+                        TxSnackbar.show(context, 'Added to Bookmarks', icon: LucideIcons.bookmark);
+                      }
+                      break;
+                    case 'share':
+                      await SharePlus.instance.share(
+                        ShareParams(
+                          text: entry.url,
+                          subject: entry.title,
                         ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                      );
+                      break;
+                    case 'remove':
+                      await ref.read(historyProvider.notifier).deleteEntry(entry.id);
+                      if (context.mounted) {
+                        TxSnackbar.show(context, 'Removed from history', icon: LucideIcons.delete);
+                      }
+                      break;
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  PopupMenuItem(
+                    value: 'open',
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.externalLink, size: 16, color: colors.textPrimary),
+                        const SizedBox(width: 10),
+                        Text('Open', style: TextStyle(color: colors.textPrimary, fontSize: 13.5)),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _cleanHost(entry.url),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.textSecondary,
-                          fontSize: 12,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  PopupMenuItem(
+                    value: 'open_new_tab',
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.plusSquare, size: 16, color: colors.textPrimary),
+                        const SizedBox(width: 10),
+                        Text('Open in New Tab', style: TextStyle(color: colors.textPrimary, fontSize: 13.5)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'open_private',
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.shieldCheck, size: 16, color: colors.warning),
+                        const SizedBox(width: 10),
+                        Text('Open in Private Tab', style: TextStyle(color: colors.textPrimary, fontSize: 13.5)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  PopupMenuItem(
+                    value: 'pin_quick_access',
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.bookmarkCheck, size: 16, color: colors.primary),
+                        const SizedBox(width: 10),
+                        Text('Pin to Quick Access', style: TextStyle(color: colors.textPrimary, fontSize: 13.5)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'bookmark',
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.bookmark, size: 16, color: colors.primary),
+                        const SizedBox(width: 10),
+                        Text('Bookmark', style: TextStyle(color: colors.textPrimary, fontSize: 13.5)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'share',
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.share2, size: 16, color: colors.textPrimary),
+                        const SizedBox(width: 10),
+                        Text('Share', style: TextStyle(color: colors.textPrimary, fontSize: 13.5)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  PopupMenuItem(
+                    value: 'remove',
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.trash2, size: 16, color: colors.error),
+                        const SizedBox(width: 10),
+                        Text('Remove from History', style: TextStyle(color: colors.error, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-            Text(
-              _formatAgo(entry.visitedAt),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: colors.textSecondary.withValues(alpha: 0.8),
-                    fontSize: 11.5,
-                  ),
-            ),
-            const SizedBox(width: 2),
-            PopupMenuButton<String>(
-              icon: Icon(
-                LucideIcons.ellipsisVertical,
-                size: 16,
-                color: colors.textSecondary.withValues(alpha: 0.8),
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 150),
-              color: colors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: colors.border),
-              ),
-              onSelected: (value) {
-                if (value == 'open') {
-                  onTap();
-                } else if (value == 'copy') {
-                  Clipboard.setData(ClipboardData(text: entry.url));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Link copied to clipboard')),
-                  );
-                }
-              },
-              itemBuilder: (ctx) => [
-                PopupMenuItem(
-                  value: 'open',
-                  child: Row(
-                    children: [
-                      Icon(LucideIcons.externalLink, size: 16, color: colors.textPrimary),
-                      const SizedBox(width: 8),
-                      Text('Open', style: TextStyle(color: colors.textPrimary, fontSize: 13)),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'copy',
-                  child: Row(
-                    children: [
-                      Icon(LucideIcons.clipboardCopy, size: 16, color: colors.textPrimary),
-                      const SizedBox(width: 8),
-                      Text('Copy Link', style: TextStyle(color: colors.textPrimary, fontSize: 13)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

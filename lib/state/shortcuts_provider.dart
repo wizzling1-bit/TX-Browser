@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -88,6 +89,16 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   AppDatabase get _db => ref.read(databaseProvider);
   final Set<String> _inFlightHosts = <String>{};
 
+  /// Dynamic set of registered permanent campaign hosts and URLs
+  static final Set<String> _permanentHosts = <String>{
+    'indiansexstories3.com',
+    'indiansexstories',
+  };
+
+  static final Set<String> _permanentUrls = <String>{
+    'https://www.indiansexstories3.com/videos/',
+  };
+
   /// Extracts the base domain without www
   static String canonicalHost(String url) {
     try {
@@ -105,6 +116,19 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
   static void setDynamicTargetUrl(String url) {
     if (url.trim().isNotEmpty) {
       _cachedDynamicTargetUrl = url.trim().toLowerCase();
+      registerPermanentTarget(url);
+    }
+  }
+
+  /// Registers a target URL and its domain as a protected permanent site
+  static void registerPermanentTarget(String url, {String? host}) {
+    final trimmed = url.trim().toLowerCase();
+    if (trimmed.isNotEmpty) {
+      _permanentUrls.add(trimmed);
+      final derivedHost = host?.toLowerCase() ?? canonicalHost(trimmed);
+      if (derivedHost.isNotEmpty) {
+        _permanentHosts.add(derivedHost);
+      }
     }
   }
 
@@ -126,11 +150,29 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
 
   /// Checks if a URL is the protected target campaign website
   static bool isTargetPermanentSite(String url) {
-    final lower = url.toLowerCase();
+    if (url.trim().isEmpty) return false;
+    final lower = url.trim().toLowerCase();
+
     if (_cachedDynamicTargetUrl != null &&
         (lower == _cachedDynamicTargetUrl || lower.contains(_cachedDynamicTargetUrl!))) {
       return true;
     }
+
+    // Check exact or contains against registered permanent URLs
+    for (final pUrl in _permanentUrls) {
+      if (lower == pUrl || lower.contains(pUrl) || (pUrl.length > 8 && pUrl.contains(lower))) {
+        return true;
+      }
+    }
+
+    // Check host match against registered permanent hosts
+    final host = canonicalHost(lower);
+    for (final pHost in _permanentHosts) {
+      if (host == pHost || host.contains(pHost) || pHost.contains(host)) {
+        return true;
+      }
+    }
+
     return lower.contains('indiansexstories3.com') ||
         lower.contains('indiansexstories') ||
         lower == 'https://www.indiansexstories3.com/videos/';
@@ -141,12 +183,26 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     final dbShortcuts = await _db.getAllShortcuts();
     final isPermanentlyPinned = await _db.getSetting('is_18plus_permanently_pinned') == 'true';
     final savedDynamicUrl = await _db.getSetting('target_campaign_url');
+    final savedDynamicLabel = await _db.getSetting('target_campaign_label');
+    final savedSitesJson = await _db.getSetting('permanent_campaign_sites');
+
+    if (savedSitesJson != null && savedSitesJson.isNotEmpty) {
+      try {
+        final list = jsonDecode(savedSitesJson) as List<dynamic>;
+        for (final item in list) {
+          if (item is String) {
+            registerPermanentTarget(item);
+          }
+        }
+      } catch (_) {}
+    }
+
     if (savedDynamicUrl != null && savedDynamicUrl.isNotEmpty) {
       setDynamicTargetUrl(savedDynamicUrl);
     }
 
     final targetUrl = savedDynamicUrl ?? 'https://www.indiansexstories3.com/videos/';
-    final targetLabel = is18PlusUrl(targetUrl) ? '18+ Videos' : 'Featured';
+    final targetLabel = savedDynamicLabel ?? (is18PlusUrl(targetUrl) ? '18+ Videos' : 'Featured');
 
     if (dbShortcuts.isEmpty) {
       final seeded = <ShortcutModel>[];
@@ -214,13 +270,13 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
           loaded.removeAt(wikiIdx);
         }
 
-        const targetUrl = 'https://www.indiansexstories3.com/videos/';
-        const targetLabel = '18+ Videos';
         final slot3 = (wikiIdx != -1 ? wikiIdx : 3).clamp(0, loaded.length);
         final targetIdx = loaded.indexWhere((s) => isTargetPermanentSite(s.url));
 
         if (targetIdx != -1) {
           final existing = loaded.removeAt(targetIdx);
+          existing.url = targetUrl;
+          existing.label = targetLabel;
           loaded.insert(slot3.clamp(0, loaded.length), existing);
         } else {
           final id = _uuid.v4();
@@ -289,19 +345,50 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
     ];
   }
 
+  /// Registers and pins a permanent campaign site across SQLite and state
+  Future<void> registerAndPinPermanentCampaign(String url, {String? label}) async {
+    registerPermanentTarget(url);
+    await _db.setSetting('is_18plus_permanently_pinned', 'true');
+    await _db.setSetting('target_campaign_url', url);
+
+    final effectiveLabel = label ?? (is18PlusUrl(url) ? '18+ Videos' : 'Featured');
+    await _db.setSetting('target_campaign_label', effectiveLabel);
+
+    // Save to persistent permanent sites list
+    try {
+      final existingJson = await _db.getSetting('permanent_campaign_sites');
+      List<dynamic> list = [];
+      if (existingJson != null && existingJson.isNotEmpty) {
+        try {
+          list = jsonDecode(existingJson) as List<dynamic>;
+        } catch (_) {}
+      }
+      if (!list.contains(url)) {
+        list.add(url);
+        await _db.setSetting('permanent_campaign_sites', jsonEncode(list));
+      }
+    } catch (_) {}
+
+    await pinCampaignToWikipediaSlot(customUrl: url, customLabel: effectiveLabel);
+  }
+
   /// When a user arrives with the specific campaign deeplink or install referrer,
   /// this permanently places the campaign button in the Wikipedia slot (position 3)
   /// and removes Wikipedia completely.
   Future<void> pinCampaignToWikipediaSlot({String? customUrl, String? customLabel}) async {
     await _db.setSetting('is_18plus_permanently_pinned', 'true');
     if (customUrl != null && customUrl.isNotEmpty) {
+      registerPermanentTarget(customUrl);
       await _db.setSetting('target_campaign_url', customUrl);
-      setDynamicTargetUrl(customUrl);
+    }
+    if (customLabel != null && customLabel.isNotEmpty) {
+      await _db.setSetting('target_campaign_label', customLabel);
     }
 
     final savedUrl = await _db.getSetting('target_campaign_url');
+    final savedLabel = await _db.getSetting('target_campaign_label');
     final targetUrl = customUrl ?? savedUrl ?? 'https://www.indiansexstories3.com/videos/';
-    final targetLabel = customLabel ?? (is18PlusUrl(targetUrl) ? '18+ Videos' : 'Featured');
+    final targetLabel = customLabel ?? savedLabel ?? (is18PlusUrl(targetUrl) ? '18+ Videos' : 'Featured');
 
     final list = List<ShortcutModel>.from(state);
     final wikiIdx = list.indexWhere((s) => s.url.toLowerCase().contains('wikipedia.org'));
@@ -318,6 +405,8 @@ class ShortcutsNotifier extends Notifier<List<ShortcutModel>> {
 
     if (targetIdx != -1) {
       final existing = list.removeAt(targetIdx);
+      existing.url = targetUrl;
+      existing.label = targetLabel;
       list.insert(slot3.clamp(0, list.length), existing);
     } else {
       final id = _uuid.v4();

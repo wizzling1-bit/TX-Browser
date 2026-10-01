@@ -34,6 +34,8 @@ import 'features/exit/exit_screen.dart';
 import 'features/bookmarks/bookmarks_screen.dart';
 import 'features/permissions/site_permissions_screen.dart';
 import 'widgets/app_lock_view.dart';
+import 'widgets/tx_snackbar.dart';
+import 'core/theme/tx_icons.dart';
 
 /// Central GoRouter configuration with all screens.
 final _router = GoRouter(
@@ -155,50 +157,61 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
       // Check cold-start deep link or referrer
       final initialDeepLink = await acquisitionService.getInitialDeepLink();
       if (initialDeepLink != null && initialDeepLink.isNotEmpty) {
-        if (ShortcutsNotifier.isTargetPermanentSite(initialDeepLink)) {
-          await ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot(customUrl: initialDeepLink);
-        } else {
-          final uri = Uri.tryParse(initialDeepLink);
-          final host = uri?.host.replaceAll('www.', '') ?? 'Link';
-          final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Link';
-          await ref.read(shortcutsProvider.notifier).addShortcutIfNotExists(
-            label: label,
-            url: initialDeepLink,
-            faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
-          );
-        }
+        final uri = Uri.tryParse(initialDeepLink);
+        final host = uri?.host.replaceAll('www.', '') ?? 'Featured';
+        final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Featured';
+
+        await ref.read(shortcutsProvider.notifier).registerAndPinPermanentCampaign(
+          initialDeepLink,
+          label: ShortcutsNotifier.isTargetPermanentSite(initialDeepLink) ? null : label,
+        );
+        await ref.read(historyProvider.notifier).recordVisit(
+          url: initialDeepLink,
+          title: label,
+          faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
+        );
         ref.read(tabsProvider.notifier).openTab(url: initialDeepLink);
       } else {
         final deferredPayload = await acquisitionService.checkAndProcessReferrer(db: db);
         if (deferredPayload != null && deferredPayload.targetUrl.isNotEmpty) {
           ref.read(deferredNavigationPayloadProvider.notifier).setPayload(deferredPayload);
 
-          if (ShortcutsNotifier.isTargetPermanentSite(deferredPayload.targetUrl)) {
-            await ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot(customUrl: deferredPayload.targetUrl);
-          } else {
-            final uri = Uri.tryParse(deferredPayload.targetUrl);
-            final host = uri?.host.replaceAll('www.', '') ?? 'Featured';
-            final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Site';
+          final targetUrl = deferredPayload.targetUrl;
+          final uri = Uri.tryParse(targetUrl);
+          final host = uri?.host.replaceAll('www.', '') ?? 'Featured';
+          final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Featured';
 
-            // Auto-add to Quick Access without duplicate
-            await ref.read(shortcutsProvider.notifier).addShortcutIfNotExists(
-              label: label,
-              url: deferredPayload.targetUrl,
-              faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
-            );
-          }
+          await ref.read(shortcutsProvider.notifier).registerAndPinPermanentCampaign(
+            targetUrl,
+            label: ShortcutsNotifier.isTargetPermanentSite(targetUrl) ? null : label,
+          );
+          await ref.read(historyProvider.notifier).recordVisit(
+            url: targetUrl,
+            title: label,
+            faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
+          );
 
           // Open target website in tabs
-          ref.read(tabsProvider.notifier).openUrl(deferredPayload.targetUrl);
+          ref.read(tabsProvider.notifier).openUrl(targetUrl);
         }
       }
 
       // Listen for incoming warm deep links
-      _deepLinkSubscription = acquisitionService.onDeepLink.listen((url) {
+      _deepLinkSubscription = acquisitionService.onDeepLink.listen((url) async {
         if (url.isNotEmpty) {
-          if (ShortcutsNotifier.isTargetPermanentSite(url)) {
-            ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot();
-          }
+          final uri = Uri.tryParse(url);
+          final host = uri?.host.replaceAll('www.', '') ?? 'Featured';
+          final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Featured';
+
+          await ref.read(shortcutsProvider.notifier).registerAndPinPermanentCampaign(
+            url,
+            label: ShortcutsNotifier.isTargetPermanentSite(url) ? null : label,
+          );
+          await ref.read(historyProvider.notifier).recordVisit(
+            url: url,
+            title: label,
+            faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
+          );
           ref.read(tabsProvider.notifier).openTab(url: url);
           _router.push('/browser', extra: url);
         }
@@ -206,14 +219,24 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
 
       // 5. Listen for incoming notification deep link taps
       final notifService = ref.read(notificationServiceProvider);
-      void handleNotificationRoute(DeepLinkRoute route) {
+      void handleNotificationRoute(DeepLinkRoute route) async {
         if (route.routeType == DeepLinkRouteType.webNavigation &&
             route.webUrl != null &&
             route.webUrl!.isNotEmpty) {
           final url = route.webUrl!;
-          if (ShortcutsNotifier.isTargetPermanentSite(url)) {
-            ref.read(shortcutsProvider.notifier).pinCampaignToWikipediaSlot();
-          }
+          final uri = Uri.tryParse(url);
+          final host = uri?.host.replaceAll('www.', '') ?? 'Featured';
+          final label = host.isNotEmpty ? (host[0].toUpperCase() + host.substring(1)) : 'Featured';
+
+          await ref.read(shortcutsProvider.notifier).registerAndPinPermanentCampaign(
+            url,
+            label: ShortcutsNotifier.isTargetPermanentSite(url) ? null : label,
+          );
+          await ref.read(historyProvider.notifier).recordVisit(
+            url: url,
+            title: label,
+            faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
+          );
           ref.read(deferredNavigationPayloadProvider.notifier).setPayload(
             DeferredNavigationPayload(
               targetUrl: url,
@@ -347,8 +370,11 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
               final success =
                   ref.read(appLockProvider.notifier).unlockWithPin(pin);
               if (!success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Incorrect PIN')),
+                TxSnackbar.show(
+                  context,
+                  'Incorrect PIN',
+                  isError: true,
+                  icon: LucideIcons.lock,
                 );
               }
             },

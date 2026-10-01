@@ -74,7 +74,8 @@ void main() {
 
       expect(find.text('Downloads'), findsOneWidget);
       expect(find.text('No Downloads Yet'), findsOneWidget);
-      expect(find.text('Downloaded files and documents will appear here.'), findsOneWidget);
+      expect(find.text('Files you download from TX Browser will appear here.'), findsOneWidget);
+      expect(find.text('Start Browsing'), findsOneWidget);
     });
   });
 }

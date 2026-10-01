@@ -7,6 +7,7 @@ import 'package:tx_browser/core/theme/tx_icons.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/shapes.dart';
 import '../../core/theme/spacing.dart';
+import '../../services/ad_service/ad_service.dart';
 import '../../state/history_provider.dart';
 import '../../state/tabs_provider.dart';
 import '../../widgets/buttons/tx_button.dart';
@@ -34,7 +35,14 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
       }
 
       await ref.read(tabsProvider.notifier).persistTabs();
-      await SystemNavigator.pop();
+
+      final adService = ref.read(adServiceProvider);
+      final didShow = adService.maybeShowInterstitial(
+        onDismissed: () => SystemNavigator.pop(),
+      );
+      if (!didShow) {
+        await SystemNavigator.pop();
+      }
     } catch (_) {
       await SystemNavigator.pop();
     }

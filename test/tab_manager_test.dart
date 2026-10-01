@@ -57,9 +57,9 @@ void main() {
 
       // Verify Header and action buttons
       expect(find.text('Tabs'), findsOneWidget);
-      expect(find.text('Open (0)'), findsOneWidget);
-      expect(find.text('Private (0)'), findsOneWidget);
-      expect(find.text('Closed (0)'), findsOneWidget);
+      expect(find.text('Open'), findsOneWidget);
+      expect(find.text('Private'), findsOneWidget);
+      expect(find.text('Closed'), findsOneWidget);
       expect(find.text('New Tab'), findsOneWidget);
       expect(find.text('Done'), findsOneWidget);
     });

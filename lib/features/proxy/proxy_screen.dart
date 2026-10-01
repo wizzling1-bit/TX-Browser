@@ -10,8 +10,8 @@ import '../../services/proxy_service/proxy_service.dart';
 import '../../state/proxy_provider.dart';
 import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/proxy_status_card.dart';
-import '../../widgets/premium_button.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
+import '../../widgets/tx_snackbar.dart';
 
 /// Screen for configuring and controlling native HTTP/SOCKS proxy.
 class ProxyScreen extends ConsumerStatefulWidget {
@@ -62,10 +62,10 @@ class _ProxyScreenState extends ConsumerState<ProxyScreen> {
         );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isEnabled ? 'Proxy configuration enabled & applied' : 'Proxy disabled'),
-        ),
+      TxSnackbar.show(
+        context,
+        _isEnabled ? 'Proxy configuration enabled & applied' : 'Proxy disabled',
+        icon: _isEnabled ? LucideIcons.shieldCheck : LucideIcons.shieldAlert,
       );
     }
   }
@@ -273,7 +273,7 @@ class _ProxyScreenState extends ConsumerState<ProxyScreen> {
 
                     const SizedBox(height: TxSpacing.lg),
 
-                    PremiumButton(
+                    TxButton(
                       label: 'Save & Apply',
                       icon: LucideIcons.check,
                       isFullWidth: true,

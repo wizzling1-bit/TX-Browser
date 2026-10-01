@@ -13,6 +13,7 @@ import '../../services/search_service/search_service.dart';
 import '../../state/tabs_provider.dart';
 import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/buttons/tx_pressable.dart';
+import '../../widgets/tx_snackbar.dart';
 
 /// Real Camera QR Code and Barcode Scanner Screen with laser guide and fallback entry.
 class QrScannerScreen extends ConsumerStatefulWidget {
@@ -165,8 +166,10 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
       _handleScannedContent(text);
     } else {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Clipboard is empty')),
+      TxSnackbar.show(
+        context,
+        'Clipboard is empty',
+        icon: LucideIcons.clipboard,
       );
     }
   }

@@ -16,6 +16,7 @@ import '../../widgets/ads/tx_native_ad_card.dart';
 import '../../widgets/dialogs/private_session_ended_sheet.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../services/ad_service/ad_service.dart';
+import '../../widgets/tx_snackbar.dart';
 
 enum TabFilterMode { regular, incognito, recentlyClosed }
 
@@ -158,8 +159,10 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                   onTap: () {
                     Navigator.pop(ctx);
                     Clipboard.setData(ClipboardData(text: tab.url));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('URL copied to clipboard')),
+                    TxSnackbar.show(
+                      context,
+                      'URL copied to clipboard',
+                      icon: LucideIcons.clipboardCopy,
                     );
                   },
                 ),
@@ -761,6 +764,8 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                             _openNewTab(isPrivate: false);
                           } else if (value == 'new_private') {
                             _openNewTab(isPrivate: true);
+                          } else if (value == 'new_group') {
+                            _showCreateGroupDialog(context);
                           }
                         },
                         itemBuilder: (_) => [
@@ -781,6 +786,16 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                                 Icon(LucideIcons.shieldCheck, size: 18),
                                 SizedBox(width: 10),
                                 Text('New Private Tab'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'new_group',
+                            child: Row(
+                              children: [
+                                Icon(LucideIcons.folderPlus, size: 18),
+                                SizedBox(width: 10),
+                                Text('New Tab Group'),
                               ],
                             ),
                           ),
@@ -893,7 +908,7 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                     child: Row(
                       children: [
                         _SegmentTab(
-                          label: 'Open (${regularTabs.length})',
+                          label: regularTabs.isNotEmpty ? 'Open ${regularTabs.length}' : 'Open',
                           icon: LucideIcons.layers,
                           isSelected: _filterMode == TabFilterMode.regular,
                           onTap: () => setState(
@@ -901,7 +916,7 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                           colors: colors,
                         ),
                         _SegmentTab(
-                          label: 'Private (${privateTabs.length})',
+                          label: privateTabs.isNotEmpty ? 'Private ${privateTabs.length}' : 'Private',
                           icon: LucideIcons.shieldCheck,
                           isSelected: _filterMode == TabFilterMode.incognito,
                           onTap: () => setState(
@@ -909,7 +924,7 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                           colors: colors,
                         ),
                         _SegmentTab(
-                          label: 'Closed (${recentlyClosed.length})',
+                          label: recentlyClosed.isNotEmpty ? 'Closed ${recentlyClosed.length}' : 'Closed',
                           icon: LucideIcons.history,
                           isSelected: _filterMode == TabFilterMode.recentlyClosed,
                           onTap: () => setState(
@@ -921,8 +936,8 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                   ),
                 ),
 
-                // Tab Groups Filter Row (Regular mode)
-                if (_filterMode == TabFilterMode.regular)
+                // Tab Groups Filter Row (Regular mode - only show when groups exist per Problem 10)
+                if (_filterMode == TabFilterMode.regular && tabState.groups.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: TxSpacing.lg,
@@ -953,7 +968,7 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                                     shape: BoxShape.circle,
                                   ),
                                 ),
-                                label: Text('${group.title} ($groupTabsCount)'),
+                                label: Text(groupTabsCount > 0 ? '${group.title} $groupTabsCount' : group.title),
                                 selected: isSel,
                                 onSelected: (_) {
                                   setState(() {
@@ -1181,33 +1196,41 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                       constraints: const BoxConstraints(maxWidth: 600),
                       child: Row(
                         children: [
-                          Expanded(
-                            child: TxButton(
-                              label: _filterMode == TabFilterMode.incognito
-                                  ? 'New Private Tab'
-                                  : 'New Tab',
-                              icon: LucideIcons.plus,
-                              variant: TxButtonVariant.primary,
-                              onPressed: () => _openNewTab(
-                                isPrivate: _filterMode == TabFilterMode.incognito,
+                          if (currentTabs.isNotEmpty &&
+                              _filterMode != TabFilterMode.recentlyClosed) ...[
+                            Expanded(
+                              child: TxButton(
+                                label: _filterMode == TabFilterMode.incognito
+                                    ? 'New Private Tab'
+                                    : 'New Tab',
+                                icon: LucideIcons.plus,
+                                variant: TxButtonVariant.primary,
+                                onPressed: () => _openNewTab(
+                                  isPrivate: _filterMode == TabFilterMode.incognito,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: TxSpacing.md),
-                          TxButton(
-                            label: 'Done',
-                            variant: TxButtonVariant.secondary,
-                            onPressed: () {
-                              if (tabState.activeTab != null &&
-                                  tabState.activeTab!.url.isNotEmpty) {
-                                context.go(
-                                  '/browser',
-                                  extra: tabState.activeTab!.url,
-                                );
-                              } else {
-                                context.go('/');
-                              }
-                            },
+                            const SizedBox(width: TxSpacing.md),
+                          ],
+                          Expanded(
+                            child: TxButton(
+                              label: 'Done',
+                              variant: (currentTabs.isEmpty ||
+                                      _filterMode == TabFilterMode.recentlyClosed)
+                                  ? TxButtonVariant.primary
+                                  : TxButtonVariant.secondary,
+                              onPressed: () {
+                                if (tabState.activeTab != null &&
+                                    tabState.activeTab!.url.isNotEmpty) {
+                                  context.go(
+                                    '/browser',
+                                    extra: tabState.activeTab!.url,
+                                  );
+                                } else {
+                                  context.go('/');
+                                }
+                              },
+                            ),
                           ),
                         ],
                       ),
@@ -1339,7 +1362,7 @@ class _EmptyTabState extends StatelessWidget {
             const SizedBox(height: TxSpacing.xs),
             Text(
               isPrivate
-                  ? 'Private tabs do not save history, cookies, or cache upon closing.'
+                  ? 'Your browsing history won\'t be saved.'
                   : 'Start browsing the web with a new tab.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: colors.textSecondary,
@@ -1348,7 +1371,7 @@ class _EmptyTabState extends StatelessWidget {
             ),
             const SizedBox(height: TxSpacing.lg),
             TxButton(
-              label: isPrivate ? 'Open Private Tab' : 'Open New Tab',
+              label: isPrivate ? 'New Private Tab' : 'New Tab',
               icon: LucideIcons.plus,
               onPressed: onNewTab,
             ),
