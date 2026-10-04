@@ -47,6 +47,9 @@ class ShieldDashboardSheet extends ConsumerWidget {
     final isSiteProtected = shield.isShieldEnabledForHost(cleanHost);
     final stats = shield.getStatsForHost(cleanHost);
 
+    final isGlobal = cleanHost == 'This Page' || cleanHost.isEmpty;
+    final isProtected = isGlobal ? shield.isGlobalEnabled : isSiteProtected;
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: TxSpacing.lg, vertical: TxSpacing.sm),
@@ -73,7 +76,7 @@ class ShieldDashboardSheet extends ConsumerWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: (isSiteProtected ? colors.primary : colors.textTertiary)
+                    color: (isProtected ? colors.primary : colors.textTertiary)
                         .withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
@@ -81,7 +84,7 @@ class ShieldDashboardSheet extends ConsumerWidget {
                     child: Icon(
                       LucideIcons.shieldCheck,
                       size: 24,
-                      color: isSiteProtected ? colors.primary : colors.textTertiary,
+                      color: isProtected ? colors.primary : colors.textTertiary,
                     ),
                   ),
                 ),
@@ -98,7 +101,7 @@ class ShieldDashboardSheet extends ConsumerWidget {
                             ),
                       ),
                       Text(
-                        cleanHost,
+                        isGlobal ? 'Global Privacy Protection' : cleanHost,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: colors.textSecondary,
                             ),
@@ -109,44 +112,52 @@ class ShieldDashboardSheet extends ConsumerWidget {
                   ),
                 ),
                 Switch(
-                  value: isSiteProtected,
+                  value: isProtected,
                   onChanged: (val) {
-                    ref.read(shieldProvider.notifier).toggleShieldForHost(cleanHost, val);
+                    if (isGlobal) {
+                      ref.read(shieldProvider.notifier).toggleGlobalShield(val);
+                    } else {
+                      ref.read(shieldProvider.notifier).toggleShieldForHost(cleanHost, val);
+                    }
                   },
                 ),
               ],
             ),
 
-            const SizedBox(height: TxSpacing.lg),
+            const SizedBox(height: TxSpacing.md),
 
             // Protection Status Banner
             Container(
               padding: const EdgeInsets.symmetric(horizontal: TxSpacing.md, vertical: 10),
               decoration: BoxDecoration(
-                color: isSiteProtected
+                color: isProtected
                     ? colors.primary.withValues(alpha: 0.08)
                     : colors.error.withValues(alpha: 0.08),
                 borderRadius: TxRadius.borderRadiusSm,
                 border: Border.all(
-                  color: (isSiteProtected ? colors.primary : colors.error)
+                  color: (isProtected ? colors.primary : colors.error)
                       .withValues(alpha: 0.25),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    isSiteProtected ? LucideIcons.check : LucideIcons.shieldAlert,
+                    isProtected ? LucideIcons.check : LucideIcons.shieldAlert,
                     size: 16,
-                    color: isSiteProtected ? colors.primary : colors.error,
+                    color: isProtected ? colors.primary : colors.error,
                   ),
                   const SizedBox(width: TxSpacing.sm),
                   Expanded(
                     child: Text(
-                      isSiteProtected
-                          ? 'Tracker & ad protection is active for this site.'
-                          : 'Protection is paused. Ads & trackers may load.',
+                      isProtected
+                          ? (isGlobal
+                              ? 'Global shield is active. Trackers & ads are blocked across the web.'
+                              : 'Tracker & ad protection is active for this site.')
+                          : (isGlobal
+                              ? 'Global protection is paused. Ads & trackers may load.'
+                              : 'Protection is paused for this site. Ads may load.'),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isSiteProtected ? colors.primary : colors.error,
+                            color: isProtected ? colors.primary : colors.error,
                             fontWeight: FontWeight.w500,
                           ),
                     ),
@@ -163,7 +174,7 @@ class ShieldDashboardSheet extends ConsumerWidget {
                 Expanded(
                   child: _StatCard(
                     title: 'Ads Blocked',
-                    count: stats.adsBlocked,
+                    count: isGlobal ? shield.lifetimeAdsBlocked : stats.adsBlocked,
                     icon: LucideIcons.ban,
                     color: colors.error,
                     colors: colors,
@@ -173,7 +184,7 @@ class ShieldDashboardSheet extends ConsumerWidget {
                 Expanded(
                   child: _StatCard(
                     title: 'Trackers Blocked',
-                    count: stats.trackersBlocked,
+                    count: isGlobal ? shield.lifetimeTrackersBlocked : stats.trackersBlocked,
                     icon: LucideIcons.radar,
                     color: colors.warning,
                     colors: colors,
@@ -187,7 +198,7 @@ class ShieldDashboardSheet extends ConsumerWidget {
                 Expanded(
                   child: _StatCard(
                     title: 'Popups Blocked',
-                    count: stats.popupsBlocked,
+                    count: isGlobal ? shield.lifetimePopupsBlocked : stats.popupsBlocked,
                     icon: LucideIcons.externalLink,
                     color: colors.secondary,
                     colors: colors,
@@ -197,7 +208,7 @@ class ShieldDashboardSheet extends ConsumerWidget {
                 Expanded(
                   child: _StatCard(
                     title: 'Redirects Blocked',
-                    count: stats.redirectsBlocked,
+                    count: isGlobal ? shield.lifetimeRedirectsBlocked : stats.redirectsBlocked,
                     icon: LucideIcons.repeat,
                     color: colors.primary,
                     colors: colors,
@@ -206,8 +217,8 @@ class ShieldDashboardSheet extends ConsumerWidget {
                 const SizedBox(width: TxSpacing.sm),
                 Expanded(
                   child: _StatCard(
-                    title: 'Total Intercepted',
-                    count: stats.requestsBlocked,
+                    title: 'Total Blocked',
+                    count: isGlobal ? shield.totalLifetimeBlocked : stats.requestsBlocked,
                     icon: LucideIcons.shield,
                     color: colors.textPrimary,
                     colors: colors,
@@ -216,29 +227,106 @@ class ShieldDashboardSheet extends ConsumerWidget {
               ],
             ),
 
-            const SizedBox(height: TxSpacing.md),
+            const SizedBox(height: TxSpacing.sm),
 
-            // Reset Site Protection Button
-            OutlinedButton.icon(
-              icon: const Icon(LucideIcons.rotateCcw, size: 16),
-              label: const Text('Reset Site Protection'),
-              style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: TxRadius.borderRadiusSm),
-                side: BorderSide(color: colors.border),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+            // Estimated Savings Highlights
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: TxRadius.borderRadiusSm,
+                border: Border.all(
+                  color: colors.border.withValues(alpha: 0.6),
+                ),
               ),
-              onPressed: () {
-                ref.read(shieldProvider.notifier).resetSiteProtection(cleanHost);
-                TxSnackbar.show(
-                  context,
-                  'Protection reset for $cleanHost',
-                  icon: LucideIcons.rotateCcw,
-                );
-                Navigator.pop(context);
-              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Row(
+                    children: [
+                      Icon(LucideIcons.hardDrive, size: 16, color: colors.primary),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            shield.estimatedDataSavedFormatted,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Data Saved',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Container(
+                    width: 1,
+                    height: 24,
+                    color: colors.border.withValues(alpha: 0.6),
+                  ),
+                  Row(
+                    children: [
+                      Icon(LucideIcons.zap, size: 16, color: colors.warning),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            shield.estimatedTimeSavedFormatted,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Time Saved',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
 
-            const SizedBox(height: TxSpacing.sm),
+            const SizedBox(height: TxSpacing.md),
+
+            // Reset Site Protection Button (only for site view)
+            if (!isGlobal) ...[
+              OutlinedButton.icon(
+                icon: const Icon(LucideIcons.rotateCcw, size: 16),
+                label: const Text('Reset Site Protection'),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: TxRadius.borderRadiusSm),
+                  side: BorderSide(color: colors.border),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () {
+                  ref.read(shieldProvider.notifier).resetSiteProtection(cleanHost);
+                  TxSnackbar.show(
+                    context,
+                    'Protection reset for $cleanHost',
+                    icon: LucideIcons.rotateCcw,
+                  );
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: TxSpacing.sm),
+            ],
 
             // Privacy Disclaimer Note
             Text(

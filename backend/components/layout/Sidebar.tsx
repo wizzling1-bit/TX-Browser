@@ -33,20 +33,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user } = useAuth();
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Compass },
-    { id: 'composer', label: 'New Campaign', icon: PlusCircle, highlight: true },
-    { id: 'notifications', label: 'Campaigns', icon: Bell },
-    { id: 'backlinks', label: 'Target URLs / Backlinks', icon: Link2 },
-    { id: 'audiences', label: 'Audiences & Topics', icon: Users },
-    { id: 'devices', label: 'Device Registry', icon: Smartphone },
-    { id: 'analytics', label: 'Analytics & Delivery', icon: BarChart3 },
-    ...(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
-      ? [{ id: 'audit-logs', label: 'Audit Trail', icon: History }]
-      : []),
-    ...(user?.role === 'SUPER_ADMIN'
-      ? [{ id: 'admin-users', label: 'Admin Access', icon: UserCog }]
-      : []),
+  const navSections = [
+    {
+      title: 'Acquisition & Campaigns',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: Compass },
+        { id: 'composer', label: 'New Campaign', icon: PlusCircle, highlight: true },
+        { id: 'notifications', label: 'Campaigns', icon: Bell },
+        { id: 'backlinks', label: 'Target URLs & Backlinks', icon: Link2 },
+        { id: 'funnel', label: 'Acquisition Funnel', icon: BarChart3 },
+      ],
+    },
+    {
+      title: 'Monetization & Security',
+      items: [
+        { id: 'ads-control', label: 'AdMob & Mediation', icon: Radio },
+        { id: 'threats', label: 'Phishing & Scam DB', icon: ShieldCheck },
+      ],
+    },
+    {
+      title: 'Users & Quality',
+      items: [
+        { id: 'feedback', label: 'User Feedback & Sites', icon: UserCog },
+        { id: 'audiences', label: 'Audiences & Topics', icon: Users },
+        { id: 'devices', label: 'Device Registry', icon: Smartphone },
+      ],
+    },
+    {
+      title: 'System & Audit',
+      items: [
+        { id: 'analytics', label: 'Delivery Analytics', icon: BarChart3 },
+        ...(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
+          ? [{ id: 'audit-logs', label: 'Audit Trail', icon: History }]
+          : []),
+        ...(user?.role === 'SUPER_ADMIN'
+          ? [{ id: 'admin-users', label: 'Admin Access', icon: UserCog }]
+          : []),
+      ],
+    },
   ];
 
   return (
@@ -66,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}
       >
         {/* Brand Header */}
-        <div className="flex items-center justify-between px-5 h-16 border-b border-tx-border bg-tx-card/80">
+        <div className="flex items-center justify-between px-5 h-16 border-b border-tx-border bg-tx-card/80 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-tx-gold via-amber-500 to-amber-700 flex items-center justify-center shadow-glow">
               <Send className="w-4 h-4 text-black font-bold" />
@@ -92,58 +116,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Section Label */}
-        <div className="px-5 pt-5 pb-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-tx-textSubtle">
-            Management & Operations
-          </p>
-        </div>
+        {/* Navigation Sections */}
+        <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+          {navSections.map((sec) => (
+            <div key={sec.title} className="space-y-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-tx-textSubtle mb-1.5">
+                {sec.title}
+              </p>
+              {sec.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentTab === item.id;
 
-        {/* Navigation Items */}
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setCurrentTab(item.id);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 relative ${
+                      isActive
+                        ? 'bg-tx-surface text-tx-cream border border-tx-border shadow-card'
+                        : item.highlight
+                        ? 'text-tx-cream bg-tx-surface/40 hover:bg-tx-surface hover:text-tx-cream border border-transparent hover:border-tx-border/60'
+                        : 'text-tx-textMuted hover:bg-tx-surface/50 hover:text-tx-cream'
+                    }`}
+                  >
+                    {/* Active indicator bar */}
+                    {isActive && (
+                      <span className="absolute left-1 top-2 bottom-2 w-1 rounded-full bg-tx-gold shadow-glow" />
+                    )}
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setCurrentTab(item.id);
-                  setIsOpen(false);
-                }}
-                className={`w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 relative ${
-                  isActive
-                    ? 'bg-tx-surface text-tx-cream border border-tx-border shadow-card'
-                    : item.highlight
-                    ? 'text-tx-cream bg-tx-surface/40 hover:bg-tx-surface hover:text-tx-cream border border-transparent hover:border-tx-border/60'
-                    : 'text-tx-textMuted hover:bg-tx-surface/50 hover:text-tx-cream'
-                }`}
-              >
-                {/* Active indicator bar */}
-                {isActive && (
-                  <span className="absolute left-1 top-2.5 bottom-2.5 w-1 rounded-full bg-tx-gold shadow-glow" />
-                )}
-
-                <Icon
-                  className={`w-4 h-4 ml-1 transition-transform group-hover:scale-110 ${
-                    isActive
-                      ? 'text-tx-gold'
-                      : item.highlight
-                      ? 'text-tx-goldLight'
-                      : 'text-tx-textSubtle group-hover:text-tx-textMuted'
-                  }`}
-                />
-                <span className="flex-1 text-left tracking-tight font-medium">{item.label}</span>
-                {item.highlight && (
-                  <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-tx-gold/15 text-tx-gold border border-tx-gold/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-tx-gold animate-pulse" />
-                    New
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                    <Icon
+                      className={`w-4 h-4 ml-1 transition-transform group-hover:scale-110 ${
+                        isActive
+                          ? 'text-tx-gold'
+                          : item.highlight
+                          ? 'text-tx-goldLight'
+                          : 'text-tx-textSubtle group-hover:text-tx-textMuted'
+                      }`}
+                    />
+                    <span className="flex-1 text-left tracking-tight font-medium">{item.label}</span>
+                    {item.highlight && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-tx-gold/15 text-tx-gold border border-tx-gold/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-tx-gold animate-pulse" />
+                        New
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Footer Info & Connection Pill */}

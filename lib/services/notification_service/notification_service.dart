@@ -135,7 +135,21 @@ class NotificationService {
       final initialMessage = await _messaging.getInitialMessage();
       if (initialMessage != null) {
         _handleMessageTap(initialMessage);
-        debugPrint('[FCM INIT] Step 8: Cold-start message found ✓');
+        debugPrint('[FCM INIT] Step 8: Cold-start FCM message found ✓');
+      }
+
+      // 8b. Handle cold-start local notification tap when app opened from notification banner
+      try {
+        final launchDetails = await _localNotifications.getNotificationAppLaunchDetails();
+        if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+          final payloadStr = launchDetails.notificationResponse?.payload;
+          if (payloadStr != null && payloadStr.isNotEmpty) {
+            _handleLocalNotificationTap(payloadStr);
+            debugPrint('[FCM INIT] Step 8b: Cold-start local notification banner tap resolved ✓');
+          }
+        }
+      } catch (e) {
+        debugPrint('[FCM INIT] Local launch details error (safe): $e');
       }
 
       // 9. Check if permission is already granted

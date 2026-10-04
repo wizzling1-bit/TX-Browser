@@ -49,7 +49,7 @@ class _DomainTheme {
 _DomainTheme _resolveDomainTheme(String url, String title, bool isPrivate, TxColorScheme colors) {
   if (isPrivate) {
     return _DomainTheme(
-      gradientColors: const [Color(0xFF232B25), Color(0xFF131814)],
+      gradientColors: const [Color(0xFF221538), Color(0xFF120A1E)],
       accentColor: colors.privateAccent,
       icon: LucideIcons.shieldCheck,
       tag: 'PRIVATE',
@@ -550,37 +550,41 @@ class TabCard extends StatelessWidget {
                         ),
                       ),
 
-                    // Close Button
+                    // Close Button (Increased touch target to 48dp for accessibility)
                     Positioned(
-                      top: 6,
-                      right: 6,
+                      top: 2,
+                      right: 2,
                       child: Semantics(
                         label: 'Close tab',
                         button: true,
                         child: TxPressable(
                           onTap: onClose,
-                          scaleDown: 0.85,
+                          scaleDown: 0.88,
                           child: Container(
-                            width: 28,
-                            height: 28,
+                            width: 44,
+                            height: 44,
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.55),
+                              color: Colors.black.withValues(alpha: 0.65),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                width: 0.8,
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 4,
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              LucideIcons.x,
-                              size: 14,
-                              color: Colors.white,
+                            child: const Center(
+                              child: Icon(
+                                LucideIcons.x,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),

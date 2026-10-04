@@ -126,7 +126,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 </p>
                 <p className="text-[11px] text-tx-textMuted font-mono truncate">
-                  {health?.database.region || 'ap-south-1'} ({health?.database.latencyMs ?? 45}ms)
+                  {health?.database.region || 'ap-south-1'} {health?.database.latencyMs !== undefined ? `(${health.database.latencyMs}ms)` : '(measuring...)'}
                 </p>
               </div>
             </div>

@@ -5,6 +5,8 @@ import '../../core/theme/shapes.dart';
 import '../../core/theme/spacing.dart';
 import 'tx_pressable.dart';
 
+export 'tx_button.dart'; // Export TxIconButton for easy import
+
 /// Tx Browser button variants per DESIGN_SYSTEM.md §5.5.
 enum TxButtonVariant { primary, secondary, destructive, ghost }
 

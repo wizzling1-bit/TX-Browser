@@ -1,6 +1,6 @@
 {
   "name": "tx-browser-notification-backend",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Production Full-Stack Push Notification Management Platform for TX Browser",
   "scripts": {
     "dev": "next dev",

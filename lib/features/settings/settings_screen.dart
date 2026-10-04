@@ -24,6 +24,7 @@ import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../widgets/dialogs/cache_cleaned_dialog.dart';
 import '../../services/ad_service/ad_service.dart';
 import '../../widgets/browser/shield_dashboard_sheet.dart';
+import '../../widgets/dialogs/report_issue_sheet.dart';
 import '../../widgets/tx_snackbar.dart';
 
 /// Redesigned commercial Settings Screen.
@@ -322,6 +323,12 @@ class SettingsScreen extends ConsumerWidget {
                   },
                 ),
                 const _VersionRow(),
+                SettingsRow(
+                  icon: LucideIcons.messageSquare,
+                  title: 'Feedback & Bug Report',
+                  subtitle: 'Report a broken website or share feedback',
+                  onTap: () => ReportIssueSheet.show(context),
+                ),
                 const SettingsRow(
                   icon: LucideIcons.hardDrive,
                   title: 'Architecture',

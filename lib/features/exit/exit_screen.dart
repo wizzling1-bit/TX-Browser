@@ -81,11 +81,11 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
                     physics: const ClampingScrollPhysics(),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: IntrinsicHeight(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Spacer(),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: TxSpacing.xl),
 
                             // Brand Hero Emblem
                             Container(
@@ -246,8 +246,7 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
                               ),
                             ),
 
-                            const Spacer(),
-                            const SizedBox(height: TxSpacing.md),
+                            const SizedBox(height: TxSpacing.xxl),
 
                             // Bottom Buttons
                             Row(
@@ -276,10 +275,10 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: TxSpacing.xl),
                           ],
                         ),
                       ),
-                    ),
                   );
                 },
               ),

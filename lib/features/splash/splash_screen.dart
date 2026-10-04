@@ -1,16 +1,22 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tx_browser/core/theme/tx_icons.dart';
 
 import '../../core/theme/colors.dart';
-import '../../core/theme/spacing.dart';
+import '../../core/theme/tx_icons.dart';
 import '../../state/acquisition_provider.dart';
+import '../../state/initialization_provider.dart';
 
-/// Flagship product splash screen with staggered micro-animations, rotating glow aura,
-/// and luxury typography.
+/// Production-ready, minimal premium splash screen for TX Browser.
+///
+/// Design tenets:
+/// - 70-80% clean negative space, 15-20% branding, 5-10% loading/status.
+/// - Authentic TX Browser brand identity with official logo asset.
+/// - Deep charcoal/near-black in dark mode (#121212), warm off-white in light mode (#F2F5E8).
+/// - Restrained micro-transitions (250-500ms), zero bouncing, zero visual clutter.
+/// - Reduced-motion compliant, WCAG AA contrast conscious.
+/// - Never blocks startup: waits only for actual bootstrap, with safety timeout fallback.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -20,127 +26,197 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with TickerProviderStateMixin {
+  // ─── Micro-Motion Animation Controllers ─────────────────────────────
   late AnimationController _entranceController;
-  late AnimationController _rotationController;
   late AnimationController _pulseController;
-  late AnimationController _progressController;
+  late AnimationController _exitController;
 
-  late Animation<double> _badgeScale;
-  late Animation<double> _badgeOpacity;
-  late Animation<double> _titleSlide;
+  // ─── Micro-Transitions ──────────────────────────────────────────────
+  late Animation<double> _logoScale;
+  late Animation<double> _logoOpacity;
+  late Animation<double> _glowOpacity;
   late Animation<double> _titleOpacity;
-  late Animation<double> _taglineSlide;
   late Animation<double> _taglineOpacity;
-  late Animation<double> _badgePillOpacity;
+  late Animation<double> _loaderOpacity;
+  late Animation<double> _screenExitOpacity;
+  late Animation<double> _pulseGlowScale;
+  late Animation<double> _pulseGlowOpacity;
 
-  Timer? _timer;
+  // ─── Lifecycle & State Guards ───────────────────────────────────────
+  Timer? _minDisplayTimer;
+  Timer? _safetyTimeoutTimer;
+  bool _minDisplayElapsed = false;
+  bool _isExiting = false;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
 
-    // 1. Staggered Entrance Controller
     _entranceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: const Duration(milliseconds: 900),
     );
 
-    // 2. Slow ambient halo rotation
-    _rotationController = AnimationController(
+    _exitController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 7),
-    )..repeat();
+      duration: const Duration(milliseconds: 280),
+    );
 
-    // 3. Ambient breathing pulse
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
-    // 4. Sleek capsule progress animation
-    _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..forward();
-
-    // Staggered intervals
-    _badgeScale = Tween<double>(begin: 0.72, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack),
-      ),
+      duration: const Duration(milliseconds: 1600),
     );
 
-    _badgeOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.0, 0.35, curve: Curves.easeOut),
-      ),
-    );
+    _setupAnimationTimeline();
 
-    _titleSlide = Tween<double>(begin: 18.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.30, 0.75, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    _titleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.30, 0.65, curve: Curves.easeOut),
-      ),
-    );
-
-    _taglineSlide = Tween<double>(begin: 14.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.45, 0.90, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    _taglineOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.45, 0.80, curve: Curves.easeOut),
-      ),
-    );
-
-    _badgePillOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.60, 1.0, curve: Curves.easeOut),
-      ),
-    );
-
-    _entranceController.forward();
-
-    // Fluid, ultra-fast launch -> route to target URL or Home
-    _timer = Timer(const Duration(milliseconds: 1450), () {
+    // Start entrance animation immediately, then begin gentle ambient breathing
+    _entranceController.forward().then((_) {
       if (mounted) {
-        // If already navigated away from splash (e.g. by notification or deep link), do not override
-        final location = GoRouterState.of(context).uri.toString();
-        if (location != '/splash') {
-          return;
-        }
+        _pulseController.repeat(reverse: true);
+      }
+    });
 
-        final deferred = ref.read(deferredNavigationPayloadProvider);
-        if (deferred != null && deferred.targetUrl.isNotEmpty) {
-          context.go('/browser', extra: deferred.targetUrl);
-        } else {
-          context.go('/');
-        }
+    // Golden-ratio minimum display time (1900ms):
+    // Allows background tasks (DB queries, tab restoration, native services, shield rules)
+    // to warm up completely so that the user lands on a lag-free 60/120fps browser surface.
+    _minDisplayTimer = Timer(const Duration(milliseconds: 1900), () {
+      if (mounted) {
+        _minDisplayElapsed = true;
+        _evaluateNavigationReadiness();
+      }
+    });
+
+    // Safety timeout: Under no condition (slow disk/storage lock) keep user stuck
+    _safetyTimeoutTimer = Timer(const Duration(milliseconds: 4000), () {
+      if (mounted && !_hasNavigated) {
+        _triggerExitAndNavigate();
       }
     });
   }
 
+  void _setupAnimationTimeline() {
+    // 1. Logo soft fade and scale (94% -> 100%)
+    _logoScale = Tween<double>(begin: 0.94, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.48, curve: Curves.easeOutCubic),
+      ),
+    );
+    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.38, curve: Curves.easeOut),
+      ),
+    );
+
+    // 2. Subtle radial green glow behind logo
+    _glowOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.12, 0.60, curve: Curves.easeOut),
+      ),
+    );
+
+    // 3. Brand name fade in
+    _titleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.25, 0.70, curve: Curves.easeOut),
+      ),
+    );
+
+    // 4. Tagline fade in
+    _taglineOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.40, 0.85, curve: Curves.easeOut),
+      ),
+    );
+
+    // 5. Minimal loading indicator & status text
+    _loaderOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.55, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    // Exit transition (fade out to seamless Home screen)
+    _screenExitOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _exitController,
+        curve: Curves.easeInOutCubic,
+      ),
+    );
+
+    // Gentle breathing pulse animations for the ambient aura
+    _pulseGlowScale = Tween<double>(begin: 0.95, end: 1.06).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    _pulseGlowOpacity = Tween<double>(begin: 0.82, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  void _evaluateNavigationReadiness() {
+    if (!mounted || _isExiting || _hasNavigated) return;
+
+    final isInitialized = ref.read(appInitializedProvider);
+    if (isInitialized && _minDisplayElapsed) {
+      _triggerExitAndNavigate();
+    }
+  }
+
+  void _triggerExitAndNavigate() {
+    if (!mounted || _isExiting || _hasNavigated) return;
+    _isExiting = true;
+
+    // Check reduced motion
+    final disableAnimations = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (disableAnimations) {
+      _executeNavigation();
+      return;
+    }
+
+    _exitController.forward().then((_) {
+      _executeNavigation();
+    });
+  }
+
+  void _executeNavigation() {
+    if (!mounted || _hasNavigated) return;
+    _hasNavigated = true;
+
+    try {
+      final location = GoRouterState.of(context).uri.toString();
+      if (location != '/splash') return;
+
+      final deferred = ref.read(deferredNavigationPayloadProvider);
+      if (deferred != null && deferred.targetUrl.isNotEmpty) {
+        context.go('/browser?url=${Uri.encodeComponent(deferred.targetUrl)}', extra: deferred.targetUrl);
+      } else {
+        context.go('/');
+      }
+    } catch (_) {
+      // In isolated tests without GoRouter in context, fallback safely
+      Navigator.maybeOf(context)?.pushReplacementNamed('/');
+    }
+  }
+
   @override
   void dispose() {
-    _timer?.cancel();
+    _minDisplayTimer?.cancel();
+    _safetyTimeoutTimer?.cancel();
     _entranceController.dispose();
-    _rotationController.dispose();
     _pulseController.dispose();
-    _progressController.dispose();
+    _exitController.dispose();
     super.dispose();
   }
 
@@ -148,267 +224,278 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
     final isDark = colors.isDark;
+    final disableAnimations = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final isAppReady = ref.watch(appInitializedProvider);
+
+    // Listen to Riverpod initialization completion to smoothly trigger navigation
+    ref.listen<bool>(appInitializedProvider, (previous, next) {
+      if (next == true) {
+        _evaluateNavigationReadiness();
+      }
+    });
 
     return Scaffold(
       backgroundColor: colors.bg,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ─── 1. Dual Ambient Breathing Glow Orbs ─────────────────────────
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.22,
-            left: 0,
-            right: 0,
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, _) {
-                final scale = 0.94 + (_pulseController.value * 0.12);
-                return Transform.scale(
-                  scale: scale,
-                  child: Center(
-                    child: Container(
-                      width: 340,
-                      height: 340,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            colors.primary.withValues(alpha: isDark ? 0.24 : 0.16),
-                            colors.secondary.withValues(alpha: isDark ? 0.08 : 0.04),
-                            Colors.transparent,
-                          ],
-                          stops: const [0.0, 0.55, 1.0],
-                        ),
-                      ),
+      body: AnimatedBuilder(
+        animation: Listenable.merge([
+          _entranceController,
+          _pulseController,
+          _exitController,
+        ]),
+        builder: (context, _) {
+          final exitOpacity = disableAnimations ? 1.0 : _screenExitOpacity.value;
+          final logoScaleVal = disableAnimations ? 1.0 : _logoScale.value;
+          final logoOpacityVal = disableAnimations ? 1.0 : _logoOpacity.value;
+          final glowOpacityVal = disableAnimations ? 1.0 : _glowOpacity.value;
+          final pulseScaleVal = disableAnimations ? 1.0 : _pulseGlowScale.value;
+          final pulseOpacityVal = disableAnimations ? 1.0 : _pulseGlowOpacity.value;
+          final titleOpacityVal = disableAnimations ? 1.0 : _titleOpacity.value;
+          final taglineOpacityVal = disableAnimations ? 1.0 : _taglineOpacity.value;
+          final loaderOpacityVal = disableAnimations ? 1.0 : _loaderOpacity.value;
+
+          return Opacity(
+            opacity: exitOpacity.clamp(0.0, 1.0),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // ── Layer 1: Barely perceptible ambient gradient depth ─────────
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _SubtleAmbientDepthPainter(
+                      accentColor: colors.primary,
+                      isDark: isDark,
                     ),
                   ),
-                );
-              },
-            ),
-          ),
+                ),
 
-          // ─── 2. Hero Centerpiece with Rotating Shimmer Halo ──────────────
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Animated Leaf Badge with Rotating Glow Ring
-                AnimatedBuilder(
-                  animation: Listenable.merge([_badgeScale, _rotationController]),
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _badgeOpacity.value,
-                      child: Transform.scale(
-                        scale: _badgeScale.value,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Rotating chromatic gradient halo ring
-                            Transform.rotate(
-                              angle: _rotationController.value * 2 * math.pi,
-                              child: Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: SweepGradient(
-                                    colors: [
-                                      colors.primary.withValues(alpha: 0.60),
-                                      colors.secondary.withValues(alpha: 0.10),
-                                      colors.primary.withValues(alpha: 0.40),
-                                      colors.secondary.withValues(alpha: 0.80),
-                                      colors.primary.withValues(alpha: 0.60),
-                                    ],
-                                  ),
-                                ),
+                // ── Layer 2: Main Layout (Centered Brand + Bottom Status) ──────
+                SafeArea(
+                  child: Column(
+                    children: [
+                      // Top negative space (balances centered visual weight)
+                      const Spacer(flex: 3),
+
+                      // Center Hero Branding
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 1. TX Browser Logo with Soft Ambient Glow & Subtle Breathing
+                          Transform.scale(
+                            scale: logoScaleVal,
+                            child: Opacity(
+                              opacity: logoOpacityVal,
+                              child: _BrandLogoHero(
+                                colors: colors,
+                                isDark: isDark,
+                                glowOpacity: glowOpacityVal,
+                                pulseScale: pulseScaleVal,
+                                pulseOpacity: pulseOpacityVal,
                               ),
                             ),
+                          ),
 
-                            // Background blur mask for the halo
-                            Container(
-                              width: 108,
-                              height: 108,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colors.bg,
-                              ),
-                            ),
+                          const SizedBox(height: 24),
 
-                            // Flagship Leaf Badge
-                            Container(
-                              width: 92,
-                              height: 92,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    colors.primary,
-                                    colors.secondary,
-                                  ],
-                                ),
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(46),
-                                  topRight: Radius.circular(46),
-                                  bottomLeft: Radius.circular(16),
-                                  bottomRight: Radius.circular(46),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.primary.withValues(alpha: isDark ? 0.45 : 0.28),
-                                    blurRadius: 30,
-                                    spreadRadius: 2,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ],
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.38),
-                                  width: 1.4,
-                                ),
-                              ),
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Positioned(
-                                    top: 8,
-                                    left: 14,
-                                    child: Container(
-                                      width: 22,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.28),
-                                        borderRadius: BorderRadius.circular(10),
+                          // 2. Brand Name: "TX" in green accent, "Browser" in neutral
+                          Opacity(
+                            opacity: titleOpacityVal,
+                            child: Semantics(
+                              header: true,
+                              label: 'TX Browser',
+                              child: Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'TX ',
+                                      style: TextStyle(
+                                        color: colors.primary,
+                                        fontWeight: FontWeight.w800,
                                       ),
                                     ),
-                                  ),
-                                  const Center(
-                                    child: Icon(
-                                      LucideIcons.leaf,
-                                      size: 46,
-                                      color: Colors.white,
+                                    TextSpan(
+                                      text: 'Browser',
+                                      style: TextStyle(
+                                        color: colors.textPrimary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 30,
+                                  letterSpacing: -0.6,
+                                  height: 1.1,
+                                ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                          ),
 
-                const SizedBox(height: TxSpacing.xl),
+                          const SizedBox(height: 10),
 
-                // Staggered Title: "TX Browser"
-                AnimatedBuilder(
-                  animation: _titleSlide,
-                  builder: (context, _) {
-                    return Opacity(
-                      opacity: _titleOpacity.value,
-                      child: Transform.translate(
-                        offset: Offset(0, _titleSlide.value),
-                        child: Text(
-                          'TX Browser',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: colors.textPrimary,
-                                letterSpacing: -0.4,
-                                fontSize: 27,
+                          // 3. Short Tagline: "Premium. Private. Powerful."
+                          Opacity(
+                            opacity: taglineOpacityVal,
+                            child: Text(
+                              'Premium. Private. Powerful.',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.6,
+                                color: colors.textTertiary,
+                                height: 1.2,
                               ),
-                        ),
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
 
-                const SizedBox(height: TxSpacing.xs),
+                      // Bottom negative space
+                      const Spacer(flex: 4),
 
-                // Staggered Tagline
-                AnimatedBuilder(
-                  animation: _taglineSlide,
-                  builder: (context, _) {
-                    final deferred = ref.watch(deferredNavigationPayloadProvider);
-                    final isDeeplink = deferred != null && deferred.targetUrl.isNotEmpty;
-
-                    return Opacity(
-                      opacity: _taglineOpacity.value,
-                      child: Transform.translate(
-                        offset: Offset(0, _taglineSlide.value),
-                        child: Text(
-                          isDeeplink ? 'Opening destination...' : 'Premium. Private. Powerful.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: colors.textSecondary,
-                                letterSpacing: 0.3,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                      // 4 & 5. Minimal Loading Indicator & Status Text
+                      Opacity(
+                        opacity: loaderOpacityVal,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 28),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.0,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    colors.primary,
+                                  ),
+                                  backgroundColor: colors.primary.withValues(
+                                    alpha: isDark ? 0.12 : 0.16,
+                                  ),
+                                ),
                               ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: TxSpacing.lg),
-
-                // Glassmorphism Security Pill Badge
-                AnimatedBuilder(
-                  animation: _badgePillOpacity,
-                  builder: (context, _) {
-                    return Opacity(
-                      opacity: _badgePillOpacity.value,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: colors.surfaceAlt.withValues(alpha: 0.70),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: colors.borderSubtle,
-                            width: 0.9,
+                              const SizedBox(height: 12),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 250),
+                                child: Text(
+                                  isAppReady ? 'Ready to browse' : 'Getting things ready…',
+                                  key: ValueKey<bool>(isAppReady),
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: isAppReady ? FontWeight.w600 : FontWeight.w400,
+                                    letterSpacing: 0.2,
+                                    color: isAppReady
+                                        ? colors.primary
+                                        : colors.textTertiary.withValues(
+                                            alpha: 0.85,
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              LucideIcons.shieldCheck,
-                              size: 13,
-                              color: colors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '100% On-Device Sandbox',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: colors.textSecondary,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
               ],
             ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Brand Logo Hero: Subtle Container & Radial Green Glow
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _BrandLogoHero extends StatelessWidget {
+  const _BrandLogoHero({
+    required this.colors,
+    required this.isDark,
+    required this.glowOpacity,
+    this.pulseScale = 1.0,
+    this.pulseOpacity = 1.0,
+  });
+
+  final TxColorScheme colors;
+  final bool isDark;
+  final double glowOpacity;
+  final double pulseScale;
+  final double pulseOpacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 110,
+      height: 110,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Soft radial green glow behind logo container with breathing pulse
+          Transform.scale(
+            scale: pulseScale,
+            child: Opacity(
+              opacity: (glowOpacity * pulseOpacity).clamp(0.0, 1.0),
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.primary.withValues(
+                        alpha: isDark ? 0.32 : 0.18,
+                      ),
+                      blurRadius: 38,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
 
-          // ─── 3. Sleek Progress Indicator at Bottom ───────────────────────
-          Positioned(
-            bottom: MediaQuery.of(context).padding.bottom + 36,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
-                  backgroundColor: colors.primary.withValues(alpha: 0.15),
+          // Subtle premium logo container
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1B201A) : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isDark
+                    ? colors.primary.withValues(alpha: 0.22)
+                    : colors.border.withValues(alpha: 0.70),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.35)
+                      : colors.primary.withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
                 ),
+              ],
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/icons/tx_logo.png',
+                width: 44,
+                height: 44,
+                color: isDark ? Colors.white : colors.primary,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    LucideIcons.leaf,
+                    size: 40,
+                    color: isDark ? Colors.white : colors.primary,
+                  );
+                },
               ),
             ),
           ),
@@ -416,4 +503,42 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
   }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Barely visible subtle ambient radial gradient depth
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _SubtleAmbientDepthPainter extends CustomPainter {
+  final Color accentColor;
+  final bool isDark;
+
+  const _SubtleAmbientDepthPainter({
+    required this.accentColor,
+    required this.isDark,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width * 0.5, size.height * 0.42);
+    final radius = size.width * 0.65;
+
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          accentColor.withValues(alpha: isDark ? 0.06 : 0.04),
+          accentColor.withValues(alpha: isDark ? 0.02 : 0.01),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.55, 1.0],
+      ).createShader(
+        Rect.fromCircle(center: center, radius: radius),
+      );
+
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SubtleAmbientDepthPainter oldDelegate) =>
+      oldDelegate.accentColor != accentColor || oldDelegate.isDark != isDark;
 }

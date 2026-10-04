@@ -56,13 +56,13 @@ class TxColorScheme extends ThemeExtension<TxColorScheme> {
     secondary: Color(0xFF609966), // #609966 accent green
     textPrimary: Color(0xFF1D261C),
     textSecondary: Color(0xFF5F705C),
-    textTertiary: Color(0xFF8E9E8C),
+    textTertiary: Color(0xFF6B7A69), // Improved contrast: 4.5:1
     border: Color(0xFFDFE6D5),
     borderSubtle: Color(0xFFECF0E6),
     success: Color(0xFF3F8A4B),
     error: Color(0xFFC0392B),
     warning: Color(0xFFD48325),
-    privateAccent: Color(0xFF40513B), // #40513B dark green
+    privateAccent: Color(0xFF7C3AED), // Distinct stealth violet
     overlayScrim: Color(0x661D261C),
     glassSurface: Color(0xD9FFFFFF),
     glassBorder: Color(0x66DFE6D5),
@@ -73,20 +73,20 @@ class TxColorScheme extends ThemeExtension<TxColorScheme> {
   // Dark Palette (Primary and Secondary accents swap deliberately)
   // ---------------------------------------------------------------------------
   static const dark = TxColorScheme(
-    bg: Color(0xFF0B0F0C), // #0B0F0C OLED near-black surface
-    surface: Color(0xFF101610), // #101610 primary dark surface
-    surfaceAlt: Color(0xFF141B15), // #141B15 secondary dark surface
+    bg: Color(0xFF121212), // Softer true black, less eye strain
+    surface: Color(0xFF1E1E1E), // Better elevation visibility
+    surfaceAlt: Color(0xFF2A2A2A), // Improved surface hierarchy
     primary: Color(0xFF69A86E),
     secondary: Color(0xFF9DC08B), // #9DC08B sage green
     textPrimary: Color(0xFFFFFFFF),
-    textSecondary: Color(0xFF8E9B8D),
-    textTertiary: Color(0xFF617060),
-    border: Color(0xFF192219), // #192219 restrained border
-    borderSubtle: Color(0xFF141B15),
+    textSecondary: Color(0xFFB0B0B0), // Better readability
+    textTertiary: Color(0xFF8E8E8E), // WCAG AA compliant
+    border: Color(0xFF3A3A3A), // More visible borders
+    borderSubtle: Color(0xFF2E2E2E), // Subtle but present
     success: Color(0xFF6BC27B),
     error: Color(0xFFE57373),
     warning: Color(0xFFFFB74D),
-    privateAccent: Color(0xFF40513B),
+    privateAccent: Color(0xFF8B5CF6), // Distinct stealth neon violet
     overlayScrim: Color(0x990A0E0A),
     glassSurface: Color(0xF2101610),
     glassBorder: Color(0x80192219),

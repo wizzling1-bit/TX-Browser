@@ -18,6 +18,7 @@ class GlassSurface extends StatelessWidget {
     this.padding,
     this.sigma = 12,
     this.opacity,
+    this.borderColor,
   });
 
   final Widget child;
@@ -25,6 +26,7 @@ class GlassSurface extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final double sigma;
   final double? opacity;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +43,7 @@ class GlassSurface extends StatelessWidget {
             color: colors.glassSurface,
             borderRadius: radius,
             border: Border.all(
-              color: colors.glassBorder,
+              color: borderColor ?? colors.glassBorder,
               width: 1,
             ),
             boxShadow: TxElevation.elevation2,

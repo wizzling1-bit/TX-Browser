@@ -13,6 +13,10 @@ import { Devices } from '@/components/pages/Devices';
 import { Analytics } from '@/components/pages/Analytics';
 import { AdminUsers } from '@/components/pages/AdminUsers';
 import { AuditLogs } from '@/components/pages/AuditLogs';
+import { AdsControl } from '@/components/pages/AdsControl';
+import { SecurityThreats } from '@/components/pages/SecurityThreats';
+import { UserFeedbackList } from '@/components/pages/UserFeedbackList';
+import { AcquisitionFunnel } from '@/components/pages/AcquisitionFunnel';
 import { Loader2 } from 'lucide-react';
 
 export default function HomePage() {
@@ -71,6 +75,15 @@ export default function HomePage() {
           }}
         />
       )}
+      {currentTab === 'funnel' && (
+        <AcquisitionFunnel
+          onNavigateToBacklinks={() => setCurrentTab('backlinks')}
+          onNavigateToComposer={() => setCurrentTab('composer')}
+        />
+      )}
+      {currentTab === 'ads-control' && <AdsControl />}
+      {currentTab === 'threats' && <SecurityThreats />}
+      {currentTab === 'feedback' && <UserFeedbackList />}
       {currentTab === 'audiences' && <Audiences />}
       {currentTab === 'devices' && <Devices />}
       {currentTab === 'analytics' && <Analytics />}

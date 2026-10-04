@@ -297,6 +297,8 @@ class AppDatabase extends _$AppDatabase {
   Future<void> clearSitePermissionsForHost(String host) =>
       (delete(sitePermissions)..where((p) => p.host.equals(host))).go();
 
+  Future<void> clearAllSitePermissions() => delete(sitePermissions).go();
+
   // ---------------------------------------------------------------------------
   // Content Blocker Exceptions
   // ---------------------------------------------------------------------------

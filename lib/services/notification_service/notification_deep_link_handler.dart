@@ -9,19 +9,19 @@ class NotificationDeepLinkHandler {
 
   /// Resolves the given [NotificationPayload] into an executable [DeepLinkRoute].
   static DeepLinkRoute resolveRoute(NotificationPayload payload) {
-    // 1. If payload has a direct web URL or Play Store campaign URL, resolve it first
+    // 1. If payload has a Play Store campaign URL, handle it
     final destVal = payload.destinationValue?.trim();
     if (destVal != null && destVal.isNotEmpty) {
       if (destVal.contains('play.google.com/store/apps') || destVal.contains('market://')) {
         return _resolvePlayStore(destVal);
       }
-      if (destVal.startsWith('https://')) {
-        return _resolveWebUrl(destVal);
-      }
     }
 
     switch (payload.destinationType) {
       case DestinationType.home:
+        if (destVal != null && destVal.isNotEmpty && (destVal.startsWith('https://') || destVal.startsWith('http://'))) {
+          return _resolveWebUrl(destVal);
+        }
         return DeepLinkRoute.home;
 
       case DestinationType.noAction:
@@ -39,7 +39,7 @@ class NotificationDeepLinkHandler {
   }
 
   /// Strictly validates and normalizes web URLs.
-  /// Enforces HTTPS only and blocks dangerous schemes.
+  /// Enforces secure HTTPS and strictly rejects unsafe schemes (javascript, data, file, intent, etc.).
   static DeepLinkRoute _resolveWebUrl(String? rawUrl) {
     if (rawUrl == null || rawUrl.trim().isEmpty) {
       debugPrint('[DeepLink] web_url destination value is empty; falling back to home.');
@@ -58,6 +58,24 @@ class NotificationDeepLinkHandler {
       }
     }
 
+    // Check if there is an explicit scheme
+    if (trimmed.contains(':')) {
+      final colonIdx = trimmed.indexOf(':');
+      final scheme = trimmed.substring(0, colonIdx).toLowerCase();
+      // Strictly require https scheme - all other schemes (http, javascript, data, file, intent, etc.) are rejected
+      if (scheme != 'https') {
+        debugPrint('[DeepLink Security] Blocked disallowed scheme "$scheme": $trimmed');
+        return DeepLinkRoute.home;
+      }
+    } else {
+      // Missing scheme: must not have whitespace, must contain dot, and must not contain invalid chars
+      if (trimmed.contains(' ') || !trimmed.contains('.')) {
+        debugPrint('[DeepLink Security] Invalid URL string: $trimmed; falling back to home.');
+        return DeepLinkRoute.home;
+      }
+      trimmed = 'https://$trimmed';
+    }
+
     final uri = Uri.tryParse(trimmed);
 
     if (uri == null || !uri.hasScheme) {
@@ -67,15 +85,22 @@ class NotificationDeepLinkHandler {
 
     final scheme = uri.scheme.toLowerCase();
 
-    // Strictly enforce HTTPS only
+    // Strictly enforce https only
     if (scheme != 'https') {
-      debugPrint('[DeepLink Security] Blocked non-HTTPS scheme: $scheme ($trimmed)');
+      debugPrint('[DeepLink Security] Blocked non-https scheme: $scheme ($trimmed)');
       return DeepLinkRoute.home;
     }
 
     // Verify host is valid
-    if (uri.host.isEmpty || uri.host.contains('localhost') || uri.host == '127.0.0.1') {
-      debugPrint('[DeepLink Security] Blocked internal/loopback host: ${uri.host}');
+    if (uri.host.isEmpty ||
+        !uri.host.contains('.') ||
+        uri.host.contains('localhost') ||
+        uri.host == '127.0.0.1' ||
+        uri.host == '0.0.0.0' ||
+        uri.host.contains(' ') ||
+        uri.host.startsWith('.') ||
+        uri.host.endsWith('.')) {
+      debugPrint('[DeepLink Security] Blocked invalid or loopback host: ${uri.host}');
       return DeepLinkRoute.home;
     }
 

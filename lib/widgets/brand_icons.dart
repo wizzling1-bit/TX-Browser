@@ -502,3 +502,127 @@ class _FlutterLogo extends StatelessWidget {
     return FlutterLogo(size: size * 0.85);
   }
 }
+
+/// Displays the authentic website favicon/logo with high-resolution fetching and smooth fallback.
+class WebsiteFaviconBadge extends StatelessWidget {
+  const WebsiteFaviconBadge({
+    super.key,
+    required this.name,
+    this.url,
+    this.domain,
+    this.faviconUrl,
+    this.size = 36,
+    this.borderRadius = 10,
+  });
+
+  final String name;
+  final String? url;
+  final String? domain;
+  final String? faviconUrl;
+  final double size;
+  final double borderRadius;
+
+  String? _resolveEffectiveDomain() {
+    if (domain != null && domain!.trim().isNotEmpty) {
+      return domain!.trim();
+    }
+    if (url != null && url!.trim().isNotEmpty) {
+      try {
+        final uri = Uri.parse(url!.trim());
+        var host = uri.host;
+        if (host.startsWith('www.')) host = host.substring(4);
+        if (host.isNotEmpty) return host;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  String? _resolveFaviconUrl() {
+    if (faviconUrl != null && faviconUrl!.trim().isNotEmpty && faviconUrl!.startsWith('http')) {
+      return faviconUrl!.trim();
+    }
+    final d = _resolveEffectiveDomain();
+    if (d != null && d.isNotEmpty && !d.startsWith('about:') && !d.startsWith('data:')) {
+      return 'https://www.google.com/s2/favicons?domain=$d&sz=128';
+    }
+    return null;
+  }
+
+  bool _isRecognizedBrand(String key) {
+    if (key.contains('18') || key.contains('sex') || key.contains('porn') || key.contains('adult')) return true;
+    switch (key) {
+      case 'google':
+      case 'youtube':
+      case 'x':
+      case 'twitter':
+      case 'wikipedia':
+      case 'reddit':
+      case 'github':
+      case 'dribbble':
+      case 'figma':
+      case 'unsplash':
+      case 'flutter':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final key = name.toLowerCase().trim();
+    if (_isRecognizedBrand(key)) {
+      return BrandIconBadge(name: name, size: size, borderRadius: borderRadius);
+    }
+
+    final resolvedUrl = _resolveFaviconUrl();
+    final colors = Theme.of(context).extension<TxColorScheme>();
+    final isDark = colors?.isDark ?? false;
+
+    if (resolvedUrl == null) {
+      return BrandIconBadge(name: name, size: size, borderRadius: borderRadius);
+    }
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1D2A) : const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: colors?.border ?? (isDark ? const Color(0xFF2E2C3D) : const Color(0xFFE5E7EB)),
+          width: 1,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius - 1),
+        child: Padding(
+          padding: EdgeInsets.all(size * 0.18),
+          child: Image.network(
+            resolvedUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => BrandIconBadge(
+              name: name,
+              size: size,
+              borderRadius: borderRadius,
+            ),
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    fontSize: size * 0.4,
+                    fontWeight: FontWeight.w700,
+                    color: colors?.textSecondary,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+

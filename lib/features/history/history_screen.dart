@@ -389,8 +389,11 @@ class _HistoryRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              BrandIconBadge(
+              WebsiteFaviconBadge(
                 name: entry.title,
+                url: entry.url,
+                domain: entry.domain,
+                faviconUrl: entry.faviconUrl,
                 size: 36,
                 borderRadius: 10,
               ),

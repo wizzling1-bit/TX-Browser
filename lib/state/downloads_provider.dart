@@ -20,11 +20,14 @@ class DownloadModel {
     required this.filePath,
     required this.sourceUrl,
     this.mimeType = 'application/octet-stream',
+    this.userAgent,
+    this.cookies,
     this.sizeBytes = 0,
     this.downloadedBytes = 0,
     this.speedBytesPerSec = 0,
     this.status = DownloadStatus.pending,
     this.progressPercent = 0,
+    this.hasAttemptedFallback = false,
     required this.createdAt,
     this.completedAt,
   });
@@ -35,36 +38,44 @@ class DownloadModel {
   final String filePath;
   final String sourceUrl;
   final String mimeType;
+  final String? userAgent;
+  final String? cookies;
   final int sizeBytes;
   final int downloadedBytes;
   final int speedBytesPerSec;
   final DownloadStatus status;
   final int progressPercent;
+  final bool hasAttemptedFallback;
   final DateTime createdAt;
   final DateTime? completedAt;
 
   DownloadModel copyWith({
     int? androidDownloadId,
+    bool clearAndroidDownloadId = false,
     String? filePath,
     int? sizeBytes,
     int? downloadedBytes,
     int? speedBytesPerSec,
     DownloadStatus? status,
     int? progressPercent,
+    bool? hasAttemptedFallback,
     DateTime? completedAt,
   }) {
     return DownloadModel(
       id: id,
-      androidDownloadId: androidDownloadId ?? this.androidDownloadId,
+      androidDownloadId: clearAndroidDownloadId ? null : (androidDownloadId ?? this.androidDownloadId),
       fileName: fileName,
       filePath: filePath ?? this.filePath,
       sourceUrl: sourceUrl,
       mimeType: mimeType,
+      userAgent: userAgent,
+      cookies: cookies,
       sizeBytes: sizeBytes ?? this.sizeBytes,
       downloadedBytes: downloadedBytes ?? this.downloadedBytes,
       speedBytesPerSec: speedBytesPerSec ?? this.speedBytesPerSec,
       status: status ?? this.status,
       progressPercent: progressPercent ?? this.progressPercent,
+      hasAttemptedFallback: hasAttemptedFallback ?? this.hasAttemptedFallback,
       createdAt: createdAt,
       completedAt: completedAt ?? this.completedAt,
     );
@@ -151,6 +162,8 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
       filePath: '',
       sourceUrl: url,
       mimeType: resolvedMime,
+      userAgent: userAgent,
+      cookies: cookies,
       status: DownloadStatus.downloading,
       progressPercent: 0,
       createdAt: DateTime.now(),
@@ -174,19 +187,44 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
       _checkAndStartPolling();
     } else {
       // Non-Android / fallback download
-      _startFallbackDownload(id, url, fileName);
+      _startFallbackDownload(
+        id,
+        url,
+        fileName,
+        userAgent: userAgent,
+        cookies: cookies,
+      );
     }
   }
 
-  void _startFallbackDownload(String id, String url, String fileName) async {
+  void _startFallbackDownload(
+    String id,
+    String url,
+    String fileName, {
+    String? userAgent,
+    String? cookies,
+  }) async {
     var lastReportedPercent = -1;
+    var lastSampleTime = DateTime.now();
+    var lastBytes = 0;
 
     try {
       final file = await _service.downloadFileFallback(
         url: url,
         fileName: fileName,
+        userAgent: userAgent,
+        cookies: cookies,
         onProgress: (progress) {
-          if (progress.progressPercent != lastReportedPercent) {
+          final now = DateTime.now();
+          final elapsed = now.difference(lastSampleTime).inMilliseconds / 1000.0;
+          var speed = 0;
+          if (elapsed >= 0.5) {
+            speed = ((progress.bytesReceived - lastBytes) / elapsed).clamp(0, 100000000).toInt();
+            lastBytes = progress.bytesReceived;
+            lastSampleTime = now;
+          }
+
+          if (progress.progressPercent != lastReportedPercent || speed > 0) {
             lastReportedPercent = progress.progressPercent;
             state = state.map((item) {
               if (item.id == id) {
@@ -194,6 +232,7 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
                   progressPercent: progress.progressPercent,
                   downloadedBytes: progress.bytesReceived,
                   sizeBytes: progress.totalBytes > 0 ? progress.totalBytes : progress.bytesReceived,
+                  speedBytesPerSec: speed > 0 ? speed : item.speedBytesPerSec,
                 );
               }
               return item;
@@ -223,6 +262,7 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
             progressPercent: 100,
             downloadedBytes: fileSize,
             sizeBytes: fileSize,
+            speedBytesPerSec: 0,
             completedAt: completedAt,
           );
           completedModel = updated;
@@ -241,7 +281,7 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
 
       state = state.map((item) {
         if (item.id == id) {
-          return item.copyWith(status: DownloadStatus.failed);
+          return item.copyWith(status: DownloadStatus.failed, speedBytesPerSec: 0);
         }
         return item;
       }).toList();
@@ -284,6 +324,25 @@ class DownloadsNotifier extends Notifier<List<DownloadModel>> {
 
           final isFinished = nativeStatus.status == DownloadStatus.completed;
           final isFailed = nativeStatus.status == DownloadStatus.failed;
+
+          // If native download fails, seamlessly fall back to HTTP streaming download instead of giving up
+          if (isFailed && !item.hasAttemptedFallback) {
+            stateChanged = true;
+            final fallbackItem = item.copyWith(
+              clearAndroidDownloadId: true,
+              hasAttemptedFallback: true,
+              status: DownloadStatus.downloading,
+            );
+            updatedList.add(fallbackItem);
+            _startFallbackDownload(
+              fallbackItem.id,
+              fallbackItem.sourceUrl,
+              fallbackItem.fileName,
+              userAgent: fallbackItem.userAgent,
+              cookies: fallbackItem.cookies,
+            );
+            continue;
+          }
 
           if (isFinished || isFailed || percent != item.progressPercent || bytes != item.downloadedBytes) {
             stateChanged = true;

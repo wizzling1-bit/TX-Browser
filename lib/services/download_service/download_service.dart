@@ -119,15 +119,30 @@ class DownloadService {
     return false;
   }
 
-  /// Fallback HTTP streaming download (used for unit tests and non-Android environments).
+  /// Fallback HTTP streaming download with headers, userAgent, cookies, and directory protection.
   Future<File> downloadFileFallback({
     required String url,
     required String fileName,
     required void Function(DownloadProgress progress) onProgress,
+    String? userAgent,
+    String? cookies,
+    Map<String, String>? headers,
     http.Client? client,
   }) async {
     final httpClient = client ?? http.Client();
     final request = http.Request('GET', Uri.parse(url));
+
+    if (userAgent != null && userAgent.isNotEmpty) {
+      request.headers['User-Agent'] = userAgent;
+    }
+    if (cookies != null && cookies.isNotEmpty) {
+      request.headers['Cookie'] = cookies;
+    }
+    if (headers != null) {
+      request.headers.addAll(headers);
+    }
+    request.headers['Accept'] = '*/*';
+
     final response = await httpClient.send(request);
 
     if (response.statusCode >= 400) {
@@ -136,9 +151,23 @@ class DownloadService {
 
     final totalBytes = response.contentLength ?? 0;
     final dir = await _getStorageDirectory();
-    final file = File(p.join(dir.path, fileName));
-    final sink = file.openWrite();
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
 
+    // Ensure collision-free unique filename
+    var targetFile = File(p.join(dir.path, fileName));
+    if (await targetFile.exists()) {
+      final ext = p.extension(fileName);
+      final base = p.basenameWithoutExtension(fileName);
+      var count = 1;
+      while (await targetFile.exists()) {
+        targetFile = File(p.join(dir.path, '$base ($count)$ext'));
+        count++;
+      }
+    }
+
+    final sink = targetFile.openWrite();
     var bytesReceived = 0;
 
     await for (final chunk in response.stream) {
@@ -158,7 +187,7 @@ class DownloadService {
     await sink.flush();
     await sink.close();
 
-    return file;
+    return targetFile;
   }
 
   /// Opens downloaded file in device's default viewer app via native FileProvider.

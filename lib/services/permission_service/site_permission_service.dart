@@ -23,13 +23,34 @@ class SitePermissionService {
     return h;
   }
 
+  Future<SitePermissionState> getDefaultPermission(String permissionType) async {
+    final key = 'default_permission_$permissionType';
+    final val = await _db.getSetting(key);
+    if (val == 'allow') return SitePermissionState.allow;
+    if (val == 'block') return SitePermissionState.block;
+    return SitePermissionState.ask;
+  }
+
+  Future<void> setDefaultPermission(
+    String permissionType,
+    SitePermissionState state,
+  ) async {
+    final key = 'default_permission_$permissionType';
+    final stateStr = state == SitePermissionState.allow
+        ? 'allow'
+        : (state == SitePermissionState.block ? 'block' : 'ask');
+    await _db.setSetting(key, stateStr);
+  }
+
   Future<SitePermissionState> getPermissionState({
     required String host,
     required String permissionType,
   }) async {
     final normHost = _normalizeHost(host);
     final record = await _db.getSitePermission(normHost, permissionType);
-    if (record == null) return SitePermissionState.ask;
+    if (record == null) {
+      return getDefaultPermission(permissionType);
+    }
 
     switch (record.state) {
       case 'allow':
@@ -63,9 +84,22 @@ class SitePermissionService {
     );
   }
 
+  Future<void> deletePermission({
+    required String host,
+    required String permissionType,
+  }) async {
+    final normHost = _normalizeHost(host);
+    final id = '${normHost}_$permissionType';
+    await _db.deleteSitePermission(id);
+  }
+
   Future<void> resetHostPermissions(String host) async {
     final normHost = _normalizeHost(host);
     await _db.clearSitePermissionsForHost(normHost);
+  }
+
+  Future<void> clearAllPermissions() async {
+    await _db.clearAllSitePermissions();
   }
 
   /// Verifies and requests native device permission from Android OS.

@@ -98,8 +98,15 @@ class DownloadManagerBridge(private val context: Context) : MethodChannel.Method
         val cleanFileName = sanitizeFileName(suggestedFileName)
         val safeFileName = getUniqueFileName(cleanFileName)
 
-        // Set destination in public Downloads directory
-        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFileName)
+        // Set destination in public Downloads directory or app-specific storage fallback
+        try {
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFileName)
+        } catch (e: Exception) {
+            val appDownloadDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            if (appDownloadDir != null) {
+                request.setDestinationUri(Uri.fromFile(File(appDownloadDir, safeFileName)))
+            }
+        }
         request.setTitle(safeFileName)
         request.setDescription("Tx Browser Download")
 
@@ -203,21 +210,31 @@ class DownloadManagerBridge(private val context: Context) : MethodChannel.Method
     }
 
     private fun getUniqueFileName(fileName: String): String {
-        val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val file = File(downloadDir, fileName)
-        if (!file.exists()) return fileName
+        try {
+            val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (downloadDir != null && downloadDir.exists()) {
+                val file = File(downloadDir, fileName)
+                if (!file.exists()) return fileName
 
-        val dotIndex = fileName.lastIndexOf('.')
-        val baseName = if (dotIndex != -1) fileName.substring(0, dotIndex) else fileName
-        val extension = if (dotIndex != -1) fileName.substring(dotIndex) else ""
+                val dotIndex = fileName.lastIndexOf('.')
+                val baseName = if (dotIndex != -1) fileName.substring(0, dotIndex) else fileName
+                val extension = if (dotIndex != -1) fileName.substring(dotIndex) else ""
 
-        var count = 1
-        while (true) {
-            val candidate = if (extension.isNotEmpty()) "${baseName} ($count).${extension}" else "${baseName} ($count)"
-            if (!File(downloadDir, candidate).exists()) {
-                return candidate
+                var count = 1
+                while (count < 100) {
+                    val candidate = if (extension.isNotEmpty()) "${baseName} ($count).${extension}" else "${baseName} ($count)"
+                    if (!File(downloadDir, candidate).exists()) {
+                        return candidate
+                    }
+                    count++
+                }
             }
-            count++
+        } catch (_: Exception) {
+            val dotIndex = fileName.lastIndexOf('.')
+            val baseName = if (dotIndex != -1) fileName.substring(0, dotIndex) else fileName
+            val extension = if (dotIndex != -1) fileName.substring(dotIndex) else ""
+            return "${baseName}_${System.currentTimeMillis()}${if (extension.isNotEmpty()) ".$extension" else ""}"
         }
+        return fileName
     }
 }

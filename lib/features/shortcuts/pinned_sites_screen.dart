@@ -260,8 +260,9 @@ class PinnedSitesScreen extends ConsumerWidget {
                         border: Border.all(color: colors.border, width: 1),
                       ),
                       child: ListTile(
-                        leading: BrandIconBadge(
+                        leading: WebsiteFaviconBadge(
                           name: shortcut.label,
+                          url: shortcut.url,
                           size: 36,
                           borderRadius: 10,
                         ),

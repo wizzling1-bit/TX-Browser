@@ -926,12 +926,21 @@ class RuleMatcher {
       return true;
     }
 
-    // 4. Common HLS / DASH video chunk extensions
-    if (path.endsWith('.m3u8') ||
-        path.endsWith('.mpd') ||
-        path.endsWith('.ts') ||
-        path.endsWith('.mp4') ||
-        path.endsWith('.webm')) {
+    // 4. Common HLS / DASH / Video / Audio playback extensions
+    final lowerPath = path.toLowerCase();
+    if (lowerPath.endsWith('.m3u8') ||
+        lowerPath.endsWith('.mpd') ||
+        lowerPath.endsWith('.ts') ||
+        lowerPath.endsWith('.mp4') ||
+        lowerPath.endsWith('.webm') ||
+        lowerPath.endsWith('.mkv') ||
+        lowerPath.endsWith('.flv') ||
+        lowerPath.endsWith('.mov') ||
+        lowerPath.endsWith('.mp3') ||
+        lowerPath.endsWith('.m4a') ||
+        lowerPath.endsWith('.aac') ||
+        lowerPath.endsWith('.ogg') ||
+        lowerPath.endsWith('.wav')) {
       return true;
     }
 

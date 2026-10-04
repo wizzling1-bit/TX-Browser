@@ -29,6 +29,7 @@ import '../../widgets/search/search_suggestions_panel.dart';
 import '../../widgets/responsive/tx_responsive_container.dart';
 import '../../state/rewarded_perks_provider.dart';
 import '../../widgets/dialogs/notification_permission_sheet.dart';
+import '../../widgets/dialogs/app_menu_sheet.dart';
 import '../../widgets/tx_snackbar.dart';
 
 /// Home screen — pixel-perfect implementation of Home.png design.
@@ -111,6 +112,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     context.push('/scanner');
   }
 
+  void _openOrNavigateToUrl(String url) {
+    final activeTab = ref.read(tabsProvider).activeTab;
+    final isPrivate = activeTab?.isPrivate ?? false;
+    if (activeTab != null && activeTab.isPrivate) {
+      ref.read(tabsProvider.notifier).updateTab(activeTab.id, (t) => t.copyWith(url: url, title: url));
+    } else {
+      ref.read(tabsProvider.notifier).openTab(url: url, isPrivate: isPrivate);
+    }
+    context.go('/browser', extra: url);
+  }
+
   void _performSearch(String query) {
     if (query.trim().isEmpty) return;
     _searchFocusNode.unfocus();
@@ -118,28 +130,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.read(adServiceProvider).recordUserAction();
     final engine = ref.read(settingsProvider).searchEngine;
     final resolved = _searchService.resolve(query, engine: engine);
-    ref.read(tabsProvider.notifier).openTab(url: resolved);
-    context.go('/browser', extra: resolved);
+    _openOrNavigateToUrl(resolved);
   }
 
   void _onSelectSuggestion(SearchSuggestion suggestion) {
     _searchFocusNode.unfocus();
     ref.read(suggestionsProvider.notifier).clear();
     ref.read(adServiceProvider).recordUserAction();
-    ref.read(tabsProvider.notifier).openTab(url: suggestion.url);
-    context.go('/browser', extra: suggestion.url);
+    _openOrNavigateToUrl(suggestion.url);
   }
 
   void _onShortcutTap(ShortcutModel shortcut) {
     ref.read(adServiceProvider).recordUserAction();
-    ref.read(tabsProvider.notifier).openTab(url: shortcut.url);
-    context.go('/browser', extra: shortcut.url);
+    _openOrNavigateToUrl(shortcut.url);
   }
 
   void _onRecentTap(HistoryEntryModel entry) {
     ref.read(adServiceProvider).recordUserAction();
-    ref.read(tabsProvider.notifier).openTab(url: entry.url);
-    context.go('/browser', extra: entry.url);
+    _openOrNavigateToUrl(entry.url);
   }
 
   void _onAddShortcut() {
@@ -416,148 +424,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _showHomeMenuSheet(BuildContext context) {
-    final colors = Theme.of(context).extension<TxColorScheme>()!;
-
-    showModalBottomSheet(
+    showTxAppMenuSheet(
       context: context,
-      backgroundColor: colors.surface,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: TxSpacing.sm),
-              // Drag handle
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              _HomeMenuRow(
-                icon: LucideIcons.star,
-                label: '10-Min Ad-Free Pass',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('ad_free_pass');
-                },
-              ),
-              Divider(color: colors.border.withValues(alpha: 0.5), indent: 56, height: 1),
-              _HomeMenuRow(
-                icon: LucideIcons.plus,
-                label: 'New tab',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('new_tab');
-                },
-              ),
-              _HomeMenuRow(
-                icon: LucideIcons.shieldCheck,
-                label: 'New private tab',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('new_private_tab');
-                },
-              ),
-              Divider(color: colors.border.withValues(alpha: 0.5), indent: 56, height: 1),
-              _HomeMenuRow(
-                icon: LucideIcons.bookmark,
-                label: 'Bookmarks',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('bookmarks');
-                },
-              ),
-              _HomeMenuRow(
-                icon: LucideIcons.history,
-                label: 'History',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('history');
-                },
-              ),
-              _HomeMenuRow(
-                icon: LucideIcons.download,
-                label: 'Downloads',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('downloads');
-                },
-              ),
-              Divider(color: colors.border.withValues(alpha: 0.5), indent: 56, height: 1),
-              _HomeMenuRow(
-                icon: LucideIcons.shieldAlert,
-                label: 'TX Shield & Privacy',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('shield');
-                },
-              ),
-              _HomeMenuRow(
-                icon: LucideIcons.settings,
-                label: 'Settings',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('settings');
-                },
-              ),
-              Divider(color: colors.border.withValues(alpha: 0.5), indent: 56, height: 1),
-              _HomeMenuRow(
-                icon: LucideIcons.power,
-                label: 'Exit TX Browser',
-                isDestructive: true,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleQuickAction('exit');
-                },
-              ),
-              const SizedBox(height: TxSpacing.md),
-            ],
-          ),
-        ),
-      ),
+      ref: ref,
+      isHomeScreen: true,
+      onUnlockAdFreePass: _onUnlockAdFreePass,
     );
   }
 
-  void _handleQuickAction(String action) {
-    switch (action) {
-      case 'ad_free_pass':
-        _onUnlockAdFreePass();
-        break;
-      case 'new_tab':
-        ref.read(tabsProvider.notifier).openTab();
-        break;
-      case 'new_private_tab':
-        ref.read(tabsProvider.notifier).openTab(isPrivate: true);
-        break;
-      case 'bookmarks':
-        context.push('/bookmarks');
-        break;
-      case 'history':
-        context.push('/history');
-        break;
-      case 'downloads':
-        context.push('/downloads');
-        break;
-      case 'shield':
-        showTxShieldDashboard(context, '');
-        break;
-      case 'settings':
-        context.push('/settings');
-        break;
-      case 'exit':
-        showTxExitDialog(context, ref);
-        break;
-    }
-  }
 
   void _onUnlockAdFreePass() {
     final perks = ref.read(rewardedPerksProvider);
@@ -596,6 +470,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
     final shortcuts = ref.watch(shortcutsProvider);
     final tabCount = ref.watch(tabsProvider).count;
+    final activeTab = ref.watch(tabsProvider.select((s) => s.activeTab));
+    final isPrivateMode = activeTab?.isPrivate ?? false;
+    final accentColor = isPrivateMode ? colors.privateAccent : colors.primary;
 
     final suggestionsState = ref.watch(suggestionsProvider);
     final perks = ref.watch(rewardedPerksProvider);
@@ -612,17 +489,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: colors.bg,
+        backgroundColor: isPrivateMode ? const Color(0xFF0C0B14) : colors.bg,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                colors.bg,
-                colors.bg.withValues(alpha: 0.95),
-                colors.surface.withValues(alpha: 0.8),
-              ],
+              colors: isPrivateMode
+                  ? [
+                      const Color(0xFF0C0B14),
+                      const Color(0xFF131120),
+                      const Color(0xFF1A162B),
+                    ]
+                  : [
+                      colors.bg,
+                      colors.bg.withValues(alpha: 0.95),
+                      colors.surface.withValues(alpha: 0.8),
+                    ],
             ),
           ),
           child: SafeArea(
@@ -648,12 +531,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           // Left: Brandmark + Title + Tagline
                           Row(
                             children: [
-                              // Green Leaf icon container
+                              // Brand Icon container
                               Container(
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(
-                                  color: colors.primary.withValues(alpha: 0.85),
+                                  color: accentColor.withValues(alpha: isPrivateMode ? 0.95 : 0.85),
                                   borderRadius: const BorderRadius.only(
                                     topLeft: Radius.circular(22),
                                     topRight: Radius.circular(22),
@@ -662,16 +545,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: colors.primary
-                                          .withValues(alpha: 0.25),
-                                      blurRadius: 8,
+                                      color: accentColor.withValues(alpha: 0.35),
+                                      blurRadius: 10,
                                       offset: const Offset(0, 3),
                                     ),
                                   ],
                                 ),
-                                child: const Center(
+                                child: Center(
                                   child: Icon(
-                                    LucideIcons.leaf,
+                                    isPrivateMode ? LucideIcons.shieldCheck : LucideIcons.leaf,
                                     size: 22,
                                     color: Colors.white,
                                   ),
@@ -682,7 +564,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'TX Browser',
+                                    isPrivateMode ? 'TX Private' : 'TX Browser',
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleLarge
@@ -695,14 +577,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Premium. Private. Powerful.',
+                                    isPrivateMode ? 'Stealth & Anonymous Browsing' : 'Premium. Private. Powerful.',
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall
                                         ?.copyWith(
-                                          color: colors.textSecondary,
+                                          color: isPrivateMode ? colors.privateAccent : colors.textSecondary,
                                           fontSize: 11.5,
-                                          fontWeight: FontWeight.w400,
+                                          fontWeight: isPrivateMode ? FontWeight.w600 : FontWeight.w400,
                                         ),
                                   ),
                                 ],
@@ -733,6 +615,94 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
 
+                  // ─── 1.5. PRIVATE MODE ACTIVE BANNER ───────────────────
+                  if (isPrivateMode) ...[
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: TxSpacing.xs),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: TxSpacing.lg),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                colors.privateAccent.withValues(alpha: 0.18),
+                                colors.privateAccent.withValues(alpha: 0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: colors.privateAccent.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: colors.privateAccent.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(LucideIcons.shieldCheck, color: colors.privateAccent, size: 18),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Private Browsing Active',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: colors.privateAccent,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    Text(
+                                      'No history, cookies, or cache are stored.',
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  final regularTab = ref.read(tabsProvider).tabs.where((t) => !t.isPrivate).firstOrNull;
+                                  if (regularTab != null) {
+                                    ref.read(tabsProvider.notifier).switchToTab(regularTab.id);
+                                  } else {
+                                    ref.read(tabsProvider.notifier).openTab(isPrivate: false);
+                                  }
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: colors.privateAccent.withValues(alpha: 0.12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: Text(
+                                  'Exit',
+                                  style: TextStyle(
+                                    color: colors.privateAccent,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
                   const SliverToBoxAdapter(
                     child: SizedBox(height: TxSpacing.md),
                   ),
@@ -752,15 +722,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               borderRadius: BorderRadius.circular(26),
                               border: Border.all(
                                 color: _searchFocusNode.hasFocus
-                                    ? colors.primary
-                                    : colors.border,
+                                    ? accentColor
+                                    : (isPrivateMode ? colors.privateAccent.withValues(alpha: 0.45) : colors.border),
                                 width: _searchFocusNode.hasFocus ? 1.5 : 1,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(
+                                  color: (isPrivateMode ? colors.privateAccent : Colors.black).withValues(
                                       alpha: _searchFocusNode.hasFocus
-                                          ? 0.08
+                                          ? (isPrivateMode ? 0.2 : 0.08)
                                           : 0.03),
                                   blurRadius: 10,
                                   offset: const Offset(0, 3),
@@ -771,24 +741,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               children: [
                                 const SizedBox(width: 14),
                                 Icon(
-                                  LucideIcons.search,
+                                  isPrivateMode ? LucideIcons.shieldCheck : LucideIcons.search,
                                   size: 20,
                                   color: _searchFocusNode.hasFocus
-                                      ? colors.primary
-                                      : colors.textSecondary,
+                                      ? accentColor
+                                      : (isPrivateMode ? colors.privateAccent : colors.textSecondary),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: TextField(
                                     controller: _searchController,
                                     focusNode: _searchFocusNode,
+                                    cursorColor: accentColor,
                                     style: TextStyle(
                                       fontSize: 15,
-                                      color: colors.textPrimary,
                                       fontWeight: FontWeight.w500,
+                                      color: colors.textPrimary,
                                     ),
                                     decoration: InputDecoration(
-                                      hintText: 'Search or enter address',
+                                      hintText: isPrivateMode
+                                          ? 'Search privately or enter address'
+                                          : 'Search or enter address',
                                       hintStyle: TextStyle(
                                         color: colors.textSecondary
                                             .withValues(alpha: 0.7),
@@ -1215,6 +1188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onTabs: () => context.go('/tabs'),
                   onMenu: () => _showHomeMenuSheet(context),
                   colors: colors,
+                  isPrivate: isPrivateMode,
                 ),
               ),
             ),
@@ -1488,8 +1462,9 @@ class _QuickAccessItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            BrandIconBadge(
+            WebsiteFaviconBadge(
               name: shortcut.label,
+              url: shortcut.url,
               size: 50,
               borderRadius: 15,
             ),
@@ -1613,8 +1588,11 @@ class _RecentSiteRow extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              BrandIconBadge(
+              WebsiteFaviconBadge(
                 name: entry.title,
+                url: entry.url,
+                domain: entry.domain,
+                faviconUrl: entry.faviconUrl,
                 size: 40,
                 borderRadius: 12,
               ),
@@ -1799,6 +1777,7 @@ class _HomeBottomBar extends StatelessWidget {
     required this.onTabs,
     required this.onMenu,
     required this.colors,
+    this.isPrivate = false,
   });
 
   final int tabCount;
@@ -1806,9 +1785,12 @@ class _HomeBottomBar extends StatelessWidget {
   final VoidCallback onTabs;
   final VoidCallback onMenu;
   final TxColorScheme colors;
+  final bool isPrivate;
 
   @override
   Widget build(BuildContext context) {
+    final accent = isPrivate ? colors.privateAccent : colors.primary;
+
     return Container(
       height: 66,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -1816,12 +1798,16 @@ class _HomeBottomBar extends StatelessWidget {
         color: colors.surface,
         borderRadius: BorderRadius.circular(33),
         border: Border.all(
-          color: colors.border.withValues(alpha: 0.6),
-          width: 1,
+          color: isPrivate
+              ? colors.privateAccent.withValues(alpha: 0.5)
+              : colors.border.withValues(alpha: 0.6),
+          width: isPrivate ? 1.4 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: isPrivate
+                ? colors.privateAccent.withValues(alpha: 0.15)
+                : Colors.black.withValues(alpha: 0.08),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -1837,7 +1823,9 @@ class _HomeBottomBar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: colors.bg,
+                  color: isPrivate
+                      ? colors.privateAccent.withValues(alpha: 0.12)
+                      : colors.bg,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -1847,7 +1835,7 @@ class _HomeBottomBar extends StatelessWidget {
                     Icon(
                       LucideIcons.home,
                       size: 20,
-                      color: colors.primary,
+                      color: accent,
                     ),
                     const SizedBox(height: 2),
                     FittedBox(
@@ -1858,7 +1846,7 @@ class _HomeBottomBar extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: colors.primary,
+                          color: accent,
                         ),
                       ),
                     ),
@@ -1891,7 +1879,7 @@ class _HomeBottomBar extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(3),
                           decoration: BoxDecoration(
-                            color: colors.primary,
+                            color: accent,
                             shape: BoxShape.circle,
                           ),
                           child: Text(
@@ -1934,11 +1922,11 @@ class _HomeBottomBar extends StatelessWidget {
               height: 48,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: colors.primary,
+                color: accent,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: colors.primary.withValues(alpha: 0.35),
+                    color: accent.withValues(alpha: 0.35),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -2019,53 +2007,6 @@ class _HomeBottomBar extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _HomeMenuRow extends StatelessWidget {
-  const _HomeMenuRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.isDestructive = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool isDestructive;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<TxColorScheme>()!;
-
-    return ListTile(
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: isDestructive
-              ? colors.error.withValues(alpha: 0.1)
-              : colors.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: isDestructive ? colors.error : colors.primary,
-        ),
-      ),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: isDestructive ? colors.error : colors.textPrimary,
-          fontSize: 15,
-          fontWeight: isDestructive ? FontWeight.w600 : FontWeight.w500,
-        ),
-      ),
-      dense: true,
-      onTap: onTap,
     );
   }
 }

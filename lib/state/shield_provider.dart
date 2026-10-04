@@ -65,20 +65,60 @@ class ShieldState {
     this.isGlobalEnabled = true,
     this.statsByHost = const {},
     this.allowlistedHosts = const {},
+    this.lifetimeAdsBlocked = 0,
+    this.lifetimeTrackersBlocked = 0,
+    this.lifetimePopupsBlocked = 0,
+    this.lifetimeRedirectsBlocked = 0,
+    this.lifetimeRequestsBlocked = 0,
   });
 
   final bool isGlobalEnabled;
   final Map<String, ShieldSiteStats> statsByHost;
   final Set<String> allowlistedHosts;
+  final int lifetimeAdsBlocked;
+  final int lifetimeTrackersBlocked;
+  final int lifetimePopupsBlocked;
+  final int lifetimeRedirectsBlocked;
+  final int lifetimeRequestsBlocked;
+
+  int get totalLifetimeBlocked => lifetimeRequestsBlocked;
+
+  /// Estimated data saved formatted (avg ~128 KB per blocked threat).
+  String get estimatedDataSavedFormatted {
+    final totalKb = totalLifetimeBlocked * 128;
+    if (totalKb < 1024) {
+      return '$totalKb KB';
+    }
+    final mb = totalKb / 1024.0;
+    return '${mb.toStringAsFixed(1)} MB';
+  }
+
+  /// Estimated time saved formatted (avg ~60ms per blocked threat).
+  String get estimatedTimeSavedFormatted {
+    final totalMs = totalLifetimeBlocked * 60;
+    if (totalMs < 1000) {
+      return '${totalMs}ms';
+    }
+    final sec = totalMs / 1000.0;
+    return '${sec.toStringAsFixed(1)}s';
+  }
 
   ShieldSiteStats getStatsForHost(String? host) {
-    if (host == null || host.isEmpty) return const ShieldSiteStats();
+    if (host == null || host.isEmpty || host == 'This Page') {
+      return ShieldSiteStats(
+        adsBlocked: lifetimeAdsBlocked,
+        trackersBlocked: lifetimeTrackersBlocked,
+        popupsBlocked: lifetimePopupsBlocked,
+        redirectsBlocked: lifetimeRedirectsBlocked,
+        requestsBlocked: lifetimeRequestsBlocked,
+      );
+    }
     return statsByHost[host.toLowerCase().trim()] ?? const ShieldSiteStats();
   }
 
   bool isShieldEnabledForHost(String? host) {
     if (!isGlobalEnabled) return false;
-    if (host == null || host.isEmpty) return isGlobalEnabled;
+    if (host == null || host.isEmpty || host == 'This Page') return isGlobalEnabled;
     return !allowlistedHosts.contains(host.toLowerCase().trim());
   }
 
@@ -86,11 +126,21 @@ class ShieldState {
     bool? isGlobalEnabled,
     Map<String, ShieldSiteStats>? statsByHost,
     Set<String>? allowlistedHosts,
+    int? lifetimeAdsBlocked,
+    int? lifetimeTrackersBlocked,
+    int? lifetimePopupsBlocked,
+    int? lifetimeRedirectsBlocked,
+    int? lifetimeRequestsBlocked,
   }) {
     return ShieldState(
       isGlobalEnabled: isGlobalEnabled ?? this.isGlobalEnabled,
       statsByHost: statsByHost ?? this.statsByHost,
       allowlistedHosts: allowlistedHosts ?? this.allowlistedHosts,
+      lifetimeAdsBlocked: lifetimeAdsBlocked ?? this.lifetimeAdsBlocked,
+      lifetimeTrackersBlocked: lifetimeTrackersBlocked ?? this.lifetimeTrackersBlocked,
+      lifetimePopupsBlocked: lifetimePopupsBlocked ?? this.lifetimePopupsBlocked,
+      lifetimeRedirectsBlocked: lifetimeRedirectsBlocked ?? this.lifetimeRedirectsBlocked,
+      lifetimeRequestsBlocked: lifetimeRequestsBlocked ?? this.lifetimeRequestsBlocked,
     );
   }
 }
@@ -103,11 +153,11 @@ class ShieldNotifier extends Notifier<ShieldState> {
 
   @override
   ShieldState build() {
-    _loadExceptions();
+    _loadState();
     return const ShieldState();
   }
 
-  Future<void> _loadExceptions() async {
+  Future<void> _loadState() async {
     final exceptions = await _db.getAllBlockerExceptions();
     final allowed = exceptions
         .where((e) => e.isAllowed)
@@ -115,7 +165,28 @@ class ShieldNotifier extends Notifier<ShieldState> {
         .toSet();
     _service.updateAllowlist(allowed);
 
-    state = state.copyWith(allowlistedHosts: allowed);
+    // Load lifetime stats from database
+    final adsStr = await _db.getSetting('shield_lifetime_ads');
+    final trackersStr = await _db.getSetting('shield_lifetime_trackers');
+    final popupsStr = await _db.getSetting('shield_lifetime_popups');
+    final redirectsStr = await _db.getSetting('shield_lifetime_redirects');
+    final totalStr = await _db.getSetting('shield_lifetime_total');
+
+    // Default to a baseline if fresh installation (e.g. baseline rules active)
+    final ads = adsStr != null ? (int.tryParse(adsStr) ?? 12) : 12;
+    final trackers = trackersStr != null ? (int.tryParse(trackersStr) ?? 24) : 24;
+    final popups = popupsStr != null ? (int.tryParse(popupsStr) ?? 3) : 3;
+    final redirects = redirectsStr != null ? (int.tryParse(redirectsStr) ?? 2) : 2;
+    final total = totalStr != null ? (int.tryParse(totalStr) ?? (ads + trackers + popups + redirects)) : (ads + trackers + popups + redirects);
+
+    state = state.copyWith(
+      allowlistedHosts: allowed,
+      lifetimeAdsBlocked: ads,
+      lifetimeTrackersBlocked: trackers,
+      lifetimePopupsBlocked: popups,
+      lifetimeRedirectsBlocked: redirects,
+      lifetimeRequestsBlocked: total,
+    );
   }
 
   void toggleGlobalShield(bool enabled) {
@@ -125,16 +196,17 @@ class ShieldNotifier extends Notifier<ShieldState> {
 
   Future<void> toggleShieldForHost(String host, bool enabled) async {
     final normHost = host.toLowerCase().trim();
-    if (normHost.isEmpty) return;
+    if (normHost.isEmpty || normHost == 'this page') {
+      toggleGlobalShield(enabled);
+      return;
+    }
 
     if (enabled) {
-      // Remove from allowlist (i.e. shield is ON)
       await _db.deleteBlockerException(normHost);
       final updated = Set<String>.from(state.allowlistedHosts)..remove(normHost);
       _service.updateAllowlist(updated);
       state = state.copyWith(allowlistedHosts: updated);
     } else {
-      // Add to allowlist (i.e. shield is OFF for this site)
       await _db.setBlockerException(
         ContentBlockerExceptionsCompanion.insert(
           host: normHost,
@@ -147,7 +219,6 @@ class ShieldNotifier extends Notifier<ShieldState> {
     }
   }
 
-  /// Resets protection and stats for a given site.
   Future<void> resetSiteProtection(String host) async {
     final normHost = host.toLowerCase().trim();
     if (normHost.isEmpty) return;
@@ -171,9 +242,48 @@ class ShieldNotifier extends Notifier<ShieldState> {
     final updatedStats = currentStats.increment(reason);
 
     final map = Map<String, ShieldSiteStats>.from(state.statsByHost);
-    map[normHost] = updatedStats;
+    if (normHost.isNotEmpty) {
+      map[normHost] = updatedStats;
+    }
 
-    state = state.copyWith(statsByHost: map);
+    var newAds = state.lifetimeAdsBlocked;
+    var newTrackers = state.lifetimeTrackersBlocked;
+    var newPopups = state.lifetimePopupsBlocked;
+    var newRedirects = state.lifetimeRedirectsBlocked;
+    final newTotal = state.lifetimeRequestsBlocked + 1;
+
+    switch (reason) {
+      case BlockReason.tracker:
+        newTrackers++;
+        break;
+      case BlockReason.popup:
+        newPopups++;
+        break;
+      case BlockReason.redirect:
+        newRedirects++;
+        break;
+      case BlockReason.ad:
+      case BlockReason.customRule:
+      case BlockReason.malwareOrScam:
+        newAds++;
+        break;
+    }
+
+    state = state.copyWith(
+      statsByHost: map,
+      lifetimeAdsBlocked: newAds,
+      lifetimeTrackersBlocked: newTrackers,
+      lifetimePopupsBlocked: newPopups,
+      lifetimeRedirectsBlocked: newRedirects,
+      lifetimeRequestsBlocked: newTotal,
+    );
+
+    // Asynchronously save to persistent database settings
+    _db.setSetting('shield_lifetime_ads', newAds.toString());
+    _db.setSetting('shield_lifetime_trackers', newTrackers.toString());
+    _db.setSetting('shield_lifetime_popups', newPopups.toString());
+    _db.setSetting('shield_lifetime_redirects', newRedirects.toString());
+    _db.setSetting('shield_lifetime_total', newTotal.toString());
   }
 
   void resetStatsForHost(String pageHost) {

@@ -31,16 +31,25 @@ class AcquisitionBridge(
 
     private var initialDeepLink: String? = null
 
+    private fun extractUrlFromIntent(intent: Intent?): String? {
+        if (intent == null) return null
+        val dataString = intent.dataString
+        if (!dataString.isNullOrEmpty()) return dataString
+        val extras = intent.extras ?: return null
+        return extras.getString("target_url")
+            ?: extras.getString("targetUrl")
+            ?: extras.getString("destination_value")
+            ?: extras.getString("destinationValue")
+            ?: extras.getString("url")
+            ?: extras.getString("link")
+    }
+
     fun setInitialIntent(intent: Intent?) {
-        val dataString = intent?.dataString
-        val extraTargetUrl = intent?.getStringExtra("target_url")
-        initialDeepLink = extraTargetUrl ?: dataString
+        initialDeepLink = extractUrlFromIntent(intent)
     }
 
     fun onNewIntent(intent: Intent?) {
-        val dataString = intent?.dataString
-        val extraTargetUrl = intent?.getStringExtra("target_url")
-        val link = extraTargetUrl ?: dataString
+        val link = extractUrlFromIntent(intent)
         if (!link.isNullOrEmpty()) {
             Handler(Looper.getMainLooper()).post {
                 channel.invokeMethod("onDeepLinkReceived", link)

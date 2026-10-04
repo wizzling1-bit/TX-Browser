@@ -657,8 +657,8 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
       child: Scaffold(
         backgroundColor: _filterMode == TabFilterMode.incognito
             ? (Theme.of(context).brightness == Brightness.light
-                ? const Color(0xFFE8EDE3)
-                : colors.bg)
+                ? const Color(0xFFF5EFFB)
+                : const Color(0xFF0D0A16))
             : colors.bg,
         body: SafeArea(
           child: TxResponsiveContainer(
@@ -919,6 +919,7 @@ class _TabManagerScreenState extends ConsumerState<TabManagerScreen> {
                           label: privateTabs.isNotEmpty ? 'Private ${privateTabs.length}' : 'Private',
                           icon: LucideIcons.shieldCheck,
                           isSelected: _filterMode == TabFilterMode.incognito,
+                          isPrivateAccent: true,
                           onTap: () => setState(
                               () => _filterMode = TabFilterMode.incognito),
                           colors: colors,
@@ -1257,6 +1258,7 @@ class _SegmentTab extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.colors,
+    this.isPrivateAccent = false,
   });
 
   final String label;
@@ -1264,9 +1266,12 @@ class _SegmentTab extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final TxColorScheme colors;
+  final bool isPrivateAccent;
 
   @override
   Widget build(BuildContext context) {
+    final activeColor = isPrivateAccent ? colors.privateAccent : colors.primary;
+
     return Expanded(
       child: TxPressable(
         onTap: onTap,
@@ -1276,12 +1281,12 @@ class _SegmentTab extends StatelessWidget {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? colors.primary : Colors.transparent,
+            color: isSelected ? activeColor : Colors.transparent,
             borderRadius: TxRadius.borderRadiusFull,
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: colors.primary.withValues(alpha: 0.25),
+                      color: activeColor.withValues(alpha: 0.3),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),

@@ -4,6 +4,7 @@ import 'package:tx_browser/core/theme/tx_icons.dart';
 import '../core/theme/colors.dart';
 import '../core/theme/shapes.dart';
 import '../core/theme/spacing.dart';
+import '../core/theme/motion.dart';
 import 'glass_surface.dart';
 import 'buttons/tx_pressable.dart';
 
@@ -24,6 +25,7 @@ class BottomNavBar extends StatelessWidget {
     required this.onTabManager,
     required this.onMenu,
     this.isVisible = true,
+    this.isPrivate = false,
   });
 
   final bool canGoBack;
@@ -35,14 +37,15 @@ class BottomNavBar extends StatelessWidget {
   final VoidCallback onTabManager;
   final VoidCallback onMenu;
   final bool isVisible;
+  final bool isPrivate;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
 
     return AnimatedSlide(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
+      duration: TxMotion.standardDuration,
+      curve: TxMotion.standardCurve,
       offset: isVisible ? Offset.zero : const Offset(0, 1.4),
       child: Center(
         child: ConstrainedBox(
@@ -51,6 +54,9 @@ class BottomNavBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: TxSpacing.md, vertical: 4),
             child: GlassSurface(
               borderRadius: TxRadius.borderRadiusFull,
+              borderColor: isPrivate
+                  ? colors.privateAccent.withValues(alpha: 0.5)
+                  : null,
               child: Container(
                 height: 48,
                 padding: const EdgeInsets.symmetric(horizontal: TxSpacing.xs),
@@ -81,6 +87,7 @@ class BottomNavBar extends StatelessWidget {
                     // Tab counter
                     _TabCounterButton(
                       count: tabCount,
+                      isPrivate: isPrivate,
                       onPressed: onTabManager,
                       colors: colors,
                     ),
@@ -149,15 +156,18 @@ class _TabCounterButton extends StatelessWidget {
     required this.count,
     required this.onPressed,
     required this.colors,
+    this.isPrivate = false,
   });
 
   final int count;
   final VoidCallback onPressed;
   final TxColorScheme colors;
+  final bool isPrivate;
 
   @override
   Widget build(BuildContext context) {
     final displayCount = count > 99 ? '99+' : count.toString();
+    final accent = isPrivate ? colors.privateAccent : colors.primary;
 
     return Semantics(
       label: '$count tabs open',
@@ -176,14 +186,15 @@ class _TabCounterButton extends StatelessWidget {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               decoration: BoxDecoration(
-                border: Border.all(color: colors.primary, width: 1.6),
+                border: Border.all(color: accent, width: 1.6),
                 borderRadius: BorderRadius.circular(6),
+                color: isPrivate ? colors.privateAccent.withValues(alpha: 0.15) : null,
               ),
               child: Center(
                 child: Text(
                   displayCount,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colors.primary,
+                        color: accent,
                         fontWeight: FontWeight.w700,
                         fontSize: 10.5,
                         height: 1.0,

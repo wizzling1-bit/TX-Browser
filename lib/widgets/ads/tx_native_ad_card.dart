@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:tx_browser/core/theme/tx_icons.dart';
 
 import '../../core/theme/colors.dart';
 import '../../core/theme/shapes.dart';
@@ -164,66 +163,17 @@ class _TxNativeAdCardState extends ConsumerState<TxNativeAdCard>
         ),
         boxShadow: TxElevation.elevation1,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header Row: AD Badge + Sponsor Attribution
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: colors.primary.withValues(alpha: 0.35),
-                    width: 0.8,
-                  ),
-                ),
-                child: Text(
-                  'AD',
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    color: colors.primary,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              const SizedBox(width: TxSpacing.xs),
-              Text(
-                'Sponsored',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: colors.textTertiary,
-                      fontSize: 10.5,
-                    ),
-              ),
-              const Spacer(),
-              Icon(
-                LucideIcons.star,
-                size: 13,
-                color: colors.primary.withValues(alpha: 0.6),
-              ),
-            ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: SizedBox(
+            width: _bannerAd!.size.width.toDouble(),
+            height: _bannerAd!.size.height.toDouble(),
+            child: AdWidget(ad: _bannerAd!),
           ),
-
-          const SizedBox(height: 6),
-
-          // Ad Canvas wrapped in FittedBox to avoid any overflow
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: _bannerAd!.size.width.toDouble(),
-                height: _bannerAd!.size.height.toDouble(),
-                child: AdWidget(ad: _bannerAd!),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

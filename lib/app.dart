@@ -15,6 +15,8 @@ import 'state/shortcuts_provider.dart';
 import 'state/tabs_provider.dart';
 import 'state/bookmarks_provider.dart';
 import 'state/notification_provider.dart';
+import 'state/shield_provider.dart';
+import 'state/initialization_provider.dart';
 import 'services/notification_service/notification_models.dart';
 import 'services/acquisition_service/deferred_navigation_model.dart';
 import 'services/ad_service/ad_service.dart';
@@ -58,7 +60,10 @@ final _router = GoRouter(
         } else if (state.uri.queryParameters.containsKey('url')) {
           url = state.uri.queryParameters['url'];
         }
-        return BrowserScreen(initialUrl: url);
+        return BrowserScreen(
+          key: ValueKey(url ?? 'browser_screen'),
+          initialUrl: url,
+        );
       },
     ),
     GoRoute(
@@ -138,6 +143,9 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
       ref.read(notificationSettingsProvider.notifier).loadSettings(),
     ]);
 
+    // Proactively warm up TX Shield privacy engine & lifetime metrics in RAM
+    ref.read(shieldProvider);
+
     // 2. Restore tabs (purges private tabs per SECURITY.md §3)
     await ref.read(tabsProvider.notifier).restoreTabs();
 
@@ -213,7 +221,7 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
             faviconUrl: uri != null ? 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128' : null,
           );
           ref.read(tabsProvider.notifier).openTab(url: url);
-          _router.push('/browser', extra: url);
+          _router.go('/browser?url=${Uri.encodeComponent(url)}', extra: url);
         }
       });
 
@@ -246,7 +254,7 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
             ),
           );
           ref.read(tabsProvider.notifier).openTab(url: url);
-          _router.go('/browser', extra: url);
+          _router.go('/browser?url=${Uri.encodeComponent(url)}', extra: url);
         } else if (route.routeType == DeepLinkRouteType.internalNavigation &&
             route.path != null &&
             route.path!.isNotEmpty) {
@@ -293,6 +301,7 @@ class _TxBrowserAppState extends ConsumerState<TxBrowserApp>
     if (mounted) {
       setState(() => _initialized = true);
     }
+    ref.read(appInitializedProvider.notifier).markInitialized();
   }
 
   @override

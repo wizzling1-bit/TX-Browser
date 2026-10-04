@@ -104,50 +104,10 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
           width: 1,
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // "AD" label row
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(
-                    color: colors.primary.withValues(alpha: 0.35),
-                    width: 0.7,
-                  ),
-                ),
-                child: Text(
-                  'AD',
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w800,
-                    color: colors.primary,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Sponsored',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: colors.textTertiary,
-                      fontSize: 9.5,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          // Ad content
-          SizedBox(
-            width: _bannerAd!.size.width.toDouble(),
-            height: _bannerAd!.size.height.toDouble(),
-            child: AdWidget(ad: _bannerAd!),
-          ),
-        ],
+      child: SizedBox(
+        width: _bannerAd!.size.width.toDouble(),
+        height: _bannerAd!.size.height.toDouble(),
+        child: AdWidget(ad: _bannerAd!),
       ),
     );
   }

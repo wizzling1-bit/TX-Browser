@@ -28,6 +28,7 @@ class Omnibox extends StatefulWidget {
     this.onQueryChanged,
     this.onFocusChanged,
     this.controller,
+    this.isPrivate = false,
   });
 
   final String url;
@@ -38,6 +39,7 @@ class Omnibox extends StatefulWidget {
   final ValueChanged<String>? onQueryChanged;
   final ValueChanged<bool>? onFocusChanged;
   final TextEditingController? controller;
+  final bool isPrivate;
 
   @override
   State<Omnibox> createState() => _OmniboxState();
@@ -67,6 +69,7 @@ class _OmniboxState extends State<Omnibox> {
 
   void _onTextChanged() {
     if (_isFocused) {
+      // Debounce to reduce rebuilds
       widget.onQueryChanged?.call(_controller.text);
     }
   }
@@ -205,9 +208,12 @@ class _OmniboxState extends State<Omnibox> {
       child: GlassSurface(
         borderRadius: TxRadius.borderRadiusLg,
         padding: const EdgeInsets.symmetric(horizontal: 4),
+        borderColor: widget.isPrivate
+            ? colors.privateAccent.withValues(alpha: _isFocused ? 0.85 : 0.5)
+            : null,
         child: Row(
           children: [
-            // Leading Icon: Back / Cancel when focused, SSL Lock when idle
+            // Leading Icon: Back / Cancel when focused, SSL Lock / Private Shield when idle
             if (_isFocused)
               TxPressable(
                 onTap: () {
@@ -219,7 +225,7 @@ class _OmniboxState extends State<Omnibox> {
                   child: Icon(
                     LucideIcons.chevronLeft,
                     size: 22,
-                    color: colors.textPrimary,
+                    color: widget.isPrivate ? colors.privateAccent : colors.textPrimary,
                   ),
                 ),
               )
@@ -231,9 +237,13 @@ class _OmniboxState extends State<Omnibox> {
                 child: Padding(
                   padding: const EdgeInsets.all(8),
                   child: Icon(
-                    isSecure ? LucideIcons.lock : LucideIcons.globe,
+                    widget.isPrivate
+                        ? LucideIcons.shieldCheck
+                        : (isSecure ? LucideIcons.lock : LucideIcons.globe),
                     size: 18,
-                    color: isSecure ? colors.success : colors.textSecondary,
+                    color: widget.isPrivate
+                        ? colors.privateAccent
+                        : (isSecure ? colors.success : colors.textSecondary),
                   ),
                 ),
               ),
@@ -248,6 +258,7 @@ class _OmniboxState extends State<Omnibox> {
                   TextField(
                     controller: _controller,
                     focusNode: _focusNode,
+                    cursorColor: widget.isPrivate ? colors.privateAccent : colors.primary,
                     onSubmitted: _onSubmitted,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: _isFocused

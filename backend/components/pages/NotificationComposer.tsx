@@ -87,7 +87,7 @@ export const NotificationComposer: React.FC<NotificationComposerProps> = ({
   const [topic, setTopic] = useState('tx_all');
   const [activeWithinDays, setActiveWithinDays] = useState<number>(30);
   const [appVersion, setAppVersion] = useState('');
-  const [availableVersions, setAvailableVersions] = useState<string[]>(['1.0.5', '1.0.4']);
+  const [availableVersions, setAvailableVersions] = useState<string[]>(['1.0.6', '1.0.5', '1.0.4']);
 
   const [timing, setTiming] = useState<'NOW' | 'SCHEDULED'>('NOW');
   const [scheduledAt, setScheduledAt] = useState('');

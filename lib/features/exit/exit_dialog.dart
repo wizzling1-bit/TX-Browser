@@ -13,25 +13,23 @@ import '../../widgets/buttons/tx_button.dart';
 import '../../widgets/buttons/tx_pressable.dart';
 
 /// Shows the premium Tx Browser Exit Confirmation Modal Bottom Sheet.
-Future<bool?> showTxExitDialog(BuildContext context, WidgetRef ref) {
+Future<bool?> showTxExitDialog(BuildContext context, [WidgetRef? ref]) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => _ExitConfirmationSheet(ref: ref),
+    builder: (ctx) => const _ExitConfirmationSheet(),
   );
 }
 
-class _ExitConfirmationSheet extends StatefulWidget {
-  const _ExitConfirmationSheet({required this.ref});
-
-  final WidgetRef ref;
+class _ExitConfirmationSheet extends ConsumerStatefulWidget {
+  const _ExitConfirmationSheet();
 
   @override
-  State<_ExitConfirmationSheet> createState() => _ExitConfirmationSheetState();
+  ConsumerState<_ExitConfirmationSheet> createState() => _ExitConfirmationSheetState();
 }
 
-class _ExitConfirmationSheetState extends State<_ExitConfirmationSheet> {
+class _ExitConfirmationSheetState extends ConsumerState<_ExitConfirmationSheet> {
   bool _clearHistoryOnExit = false;
   bool _isExiting = false;
 
@@ -40,14 +38,14 @@ class _ExitConfirmationSheetState extends State<_ExitConfirmationSheet> {
 
     try {
       if (_clearHistoryOnExit) {
-        await widget.ref.read(historyProvider.notifier).clearAll();
+        await ref.read(historyProvider.notifier).clearAll();
       }
 
       // Persist regular tabs and purge private tabs per security specs
-      await widget.ref.read(tabsProvider.notifier).persistTabs();
+      await ref.read(tabsProvider.notifier).persistTabs();
 
       // Show interstitial if frequency caps allow, then exit
-      final adService = widget.ref.read(adServiceProvider);
+      final adService = ref.read(adServiceProvider);
       final didShow = adService.maybeShowInterstitial(
         onDismissed: () => SystemNavigator.pop(),
       );
@@ -63,7 +61,7 @@ class _ExitConfirmationSheetState extends State<_ExitConfirmationSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
-    final tabState = widget.ref.watch(tabsProvider);
+    final tabState = ref.watch(tabsProvider);
     final regularTabsCount = tabState.tabs.where((t) => !t.isPrivate).length;
     final privateTabsCount = tabState.tabs.where((t) => t.isPrivate).length;
 

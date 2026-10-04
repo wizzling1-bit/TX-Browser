@@ -216,3 +216,110 @@ model CampaignBacklink {
   @@map("campaign_backlinks")
 }
 
+model CampaignClickEvent {
+  id           String    @id @default(uuid())
+  campaignSlug String    @map("campaign_slug")
+  targetUrl    String    @map("target_url")
+  ipAddress    String?   @map("ip_address")
+  userAgent    String?   @map("user_agent")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([campaignSlug])
+  @@index([createdAt])
+  @@map("campaign_click_events")
+}
+
+model AdConfiguration {
+  id                          String   @id @default("global")
+  admobAppId                  String   @default("ca-app-pub-3435015056397165~5473577665") @map("admob_app_id")
+  bannerEnabled               Boolean  @default(true) @map("banner_enabled")
+  interstitialEnabled         Boolean  @default(true) @map("interstitial_enabled")
+  rewardedEnabled             Boolean  @default(true) @map("rewarded_enabled")
+  nativeEnabled               Boolean  @default(true) @map("native_enabled")
+  appOpenEnabled              Boolean  @default(true) @map("app_open_enabled")
+  bannerAdUnitId              String   @default("ca-app-pub-3435015056397165/1621912239") @map("banner_ad_unit_id")
+  interstitialAdUnitId        String   @default("ca-app-pub-3435015056397165/8850550042") @map("interstitial_ad_unit_id")
+  rewardedAdUnitId            String   @default("ca-app-pub-3435015056397165/8658978359") @map("rewarded_ad_unit_id")
+  appOpenAdUnitId             String   @default("ca-app-pub-3435015056397165/3538513614") @map("app_open_ad_unit_id")
+  nativeAdUnitId              String   @default("ca-app-pub-3435015056397165/5210687936") @map("native_ad_unit_id")
+  rewardedPerkMinutes         Int      @default(10) @map("rewarded_perk_minutes")
+  interstitialIntervalMinutes Int      @default(5) @map("interstitial_interval_minutes")
+  interstitialPageThreshold   Int      @default(4) @map("interstitial_page_threshold")
+  activePerkMultiplier        Float    @default(1.0) @map("active_perk_multiplier")
+  killSwitch                  Boolean  @default(false) @map("kill_switch")
+  mediationNetwork            String   @default("ADMOB") @map("mediation_network")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
+  createdAt                   DateTime @default(now()) @map("created_at")
+
+  @@map("ad_configurations")
+}
+
+enum ThreatCategory {
+  PHISHING
+  SCAM
+  MALWARE
+  CRYPTO_DRAINER
+  SUSPICIOUS
+}
+
+enum ThreatSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model SecurityThreat {
+  id            String         @id @default(uuid())
+  domain        String         @unique
+  category      ThreatCategory @default(PHISHING)
+  severity      ThreatSeverity @default(HIGH)
+  reason        String
+  reportedCount Int            @default(1) @map("reported_count")
+  isActive      Boolean        @default(true) @map("is_active")
+  source        String         @default("ADMIN")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@index([domain])
+  @@index([category])
+  @@index([isActive])
+  @@map("security_threats")
+}
+
+enum FeedbackCategory {
+  BROKEN_WEBSITE
+  AD_BLOCKER_ISSUE
+  CRASH_BUG
+  PERFORMANCE
+  FEATURE_REQUEST
+  OTHER
+}
+
+enum FeedbackStatus {
+  NEW
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model UserFeedback {
+  id             String           @id @default(uuid())
+  category       FeedbackCategory @default(BROKEN_WEBSITE)
+  targetUrl      String?          @map("target_url")
+  description    String
+  deviceModel    String?          @map("device_model")
+  androidVersion String?          @map("android_version")
+  appVersion     String?          @map("app_version")
+  shieldEnabled  Boolean          @default(true) @map("shield_enabled")
+  status         FeedbackStatus   @default(NEW)
+  adminNotes     String?          @map("admin_notes")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+  @@map("user_feedbacks")
+}
+

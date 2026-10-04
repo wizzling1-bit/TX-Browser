@@ -14,6 +14,7 @@ class AdConfig {
   const AdConfig({
     // ── Master switches ──────────────────────────────────────────────
     this.enableAds = true,
+    this.killSwitch = false,
     this.enableHomeAds = true,
     this.enableInterstitials = true,
     this.enableAppOpenAds = true,
@@ -24,6 +25,16 @@ class AdConfig {
     this.cooldownDuration = const Duration(seconds: 45),
     this.appOpenCooldownDuration = const Duration(seconds: 45),
     this.maxInterstitialsPerSession = 6,
+
+    // ── Rewarded Perk Duration ─────────────────────────────────────────
+    this.rewardedPerkMinutes = 10,
+
+    // ── Dynamic Ad Unit IDs ────────────────────────────────────────────
+    this.bannerAdUnitId = bannerId,
+    this.interstitialAdUnitId = interstitialId,
+    this.rewardedAdUnitId = rewardedId,
+    this.appOpenAdUnitId = appOpenId,
+    this.nativeAdUnitId = nativeId,
 
     // ── Per-screen native ad limits ──────────────────────────────────
     this.maxNativeAdsPerScreen = 1,
@@ -48,16 +59,30 @@ class AdConfig {
 
   // ── Master switches ──────────────────────────────────────────────────
   final bool enableAds;
+  final bool killSwitch;
   final bool enableHomeAds;
   final bool enableInterstitials;
   final bool enableAppOpenAds;
   final bool enableRewardedAds;
+
+  /// Returns true only if ads are enabled and kill-switch is NOT active
+  bool get areAdsGloballyEnabled => enableAds && !killSwitch;
 
   // ── Interstitial frequency / safety ──────────────────────────────────
   final int minimumActionsBetweenInterstitials;
   final Duration cooldownDuration;
   final Duration appOpenCooldownDuration;
   final int maxInterstitialsPerSession;
+
+  // ── Rewarded Perk Duration ─────────────────────────────────────────
+  final int rewardedPerkMinutes;
+
+  // ── Dynamic Ad Unit IDs ────────────────────────────────────────────
+  final String bannerAdUnitId;
+  final String interstitialAdUnitId;
+  final String rewardedAdUnitId;
+  final String appOpenAdUnitId;
+  final String nativeAdUnitId;
 
   // ── Per-screen native ad limits ──────────────────────────────────────
   final int maxNativeAdsPerScreen;
@@ -87,4 +112,40 @@ class AdConfig {
   static const String appOpenId = 'ca-app-pub-3435015056397165/3538513614';
   static const String rewardedId = 'ca-app-pub-3435015056397165/8658978359';
   static const String nativeId = 'ca-app-pub-3435015056397165/5210687936';
+
+  factory AdConfig.fromJson(Map<String, dynamic> json) {
+    return AdConfig(
+      killSwitch: json['killSwitch'] == true || json['kill_switch'] == true,
+      enableAds: json['enableAds'] ?? true,
+      enableHomeAds: json['bannerEnabled'] ?? json['banner_enabled'] ?? true,
+      enableInterstitials: json['interstitialEnabled'] ?? json['interstitial_enabled'] ?? true,
+      enableAppOpenAds: json['appOpenEnabled'] ?? json['app_open_enabled'] ?? true,
+      enableRewardedAds: json['rewardedEnabled'] ?? json['rewarded_enabled'] ?? true,
+      minimumActionsBetweenInterstitials: ((json['interstitialPageThreshold'] ?? json['interstitial_page_threshold'] ?? 3) as num).toInt(),
+      cooldownDuration: Duration(minutes: ((json['interstitialIntervalMinutes'] ?? json['interstitial_interval_minutes'] ?? 5) as num).toInt()),
+      rewardedPerkMinutes: ((json['rewardedPerkMinutes'] ?? json['rewarded_perk_minutes'] ?? 10) as num).toInt(),
+      bannerAdUnitId: (json['bannerAdUnitId'] ?? json['banner_ad_unit_id'] ?? bannerId) as String,
+      interstitialAdUnitId: (json['interstitialAdUnitId'] ?? json['interstitial_ad_unit_id'] ?? interstitialId) as String,
+      rewardedAdUnitId: (json['rewardedAdUnitId'] ?? json['rewarded_ad_unit_id'] ?? rewardedId) as String,
+      appOpenAdUnitId: (json['appOpenAdUnitId'] ?? json['app_open_ad_unit_id'] ?? appOpenId) as String,
+      nativeAdUnitId: (json['nativeAdUnitId'] ?? json['native_ad_unit_id'] ?? nativeId) as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'killSwitch': killSwitch,
+    'enableAds': enableAds,
+    'bannerEnabled': enableHomeAds,
+    'interstitialEnabled': enableInterstitials,
+    'appOpenEnabled': enableAppOpenAds,
+    'rewardedEnabled': enableRewardedAds,
+    'interstitialPageThreshold': minimumActionsBetweenInterstitials,
+    'interstitialIntervalMinutes': cooldownDuration.inMinutes,
+    'rewardedPerkMinutes': rewardedPerkMinutes,
+    'bannerAdUnitId': bannerAdUnitId,
+    'interstitialAdUnitId': interstitialAdUnitId,
+    'rewardedAdUnitId': rewardedAdUnitId,
+    'appOpenAdUnitId': appOpenAdUnitId,
+    'nativeAdUnitId': nativeAdUnitId,
+  };
 }

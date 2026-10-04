@@ -61,6 +61,8 @@ firebase-adminsdk*.json
 *.tar.gz
 *.keystore
 *.jks
+android/build/
+*.tsbuildinfo
 
 # Agent, skill, and superpower tooling
 .agents/

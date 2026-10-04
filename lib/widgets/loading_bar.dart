@@ -15,6 +15,7 @@ class LoadingBar extends StatelessWidget {
     super.key,
     required this.progress,
     this.isVisible = true,
+    this.color,
   });
 
   /// Progress value from 0 to 100.
@@ -23,9 +24,13 @@ class LoadingBar extends StatelessWidget {
   /// Whether the bar should be visible.
   final bool isVisible;
 
+  /// Custom bar color.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<TxColorScheme>()!;
+    final effectiveColor = color ?? colors.primary;
 
     return RepaintBoundary(
       child: AnimatedOpacity(
@@ -42,7 +47,7 @@ class LoadingBar extends StatelessWidget {
                   Container(
                     height: 2,
                     width: constraints.maxWidth,
-                    color: colors.primary.withValues(alpha: 0.15),
+                    color: effectiveColor.withValues(alpha: 0.15),
                   ),
                   // Fill
                   AnimatedContainer(
@@ -51,7 +56,7 @@ class LoadingBar extends StatelessWidget {
                     height: 2,
                     width: constraints.maxWidth * (progress / 100).clamp(0.0, 1.0),
                     decoration: BoxDecoration(
-                      color: colors.primary,
+                      color: effectiveColor,
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),

@@ -194,9 +194,44 @@ void main() {
       // Pump frame
       await tester.pump();
 
-      // AD label and Sponsored text should be present during loading
-      expect(find.text('AD'), findsOneWidget);
-      expect(find.text('Sponsored'), findsOneWidget);
+      expect(find.byType(TxNativeAdCard), findsOneWidget);
+      // AD label and Sponsored text should be removed per design
+      expect(find.text('AD'), findsNothing);
+      expect(find.text('Sponsored'), findsNothing);
+    });
+  });
+
+  group('AdService with Ad-Free Pass Unit Tests', () {
+    test('maybeShowInterstitial fires onDismissed when ad-free is active', () {
+      final service = AdService();
+      service.isAdFreeChecker = () => true;
+
+      bool dismissed = false;
+      final result = service.maybeShowInterstitial(onDismissed: () => dismissed = true);
+
+      expect(result, isFalse);
+      expect(dismissed, isTrue);
+    });
+
+    test('forceShowInterstitial fires onDismissed when ad-free is active', () {
+      final service = AdService();
+      service.isAdFreeChecker = () => true;
+
+      bool dismissed = false;
+      final result = service.forceShowInterstitial(onDismissed: () => dismissed = true);
+
+      expect(result, isFalse);
+      expect(dismissed, isTrue);
+    });
+
+    test('handleAppResume fires onDismissed when ad-free is active', () {
+      final service = AdService();
+      service.isAdFreeChecker = () => true;
+
+      bool dismissed = false;
+      service.handleAppResume(onDismissed: () => dismissed = true);
+
+      expect(dismissed, isTrue);
     });
   });
 }

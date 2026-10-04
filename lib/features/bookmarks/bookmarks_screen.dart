@@ -175,6 +175,7 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
                       label: 'Save Bookmark',
                       onPressed: () {
                         if (urlCtrl.text.trim().isNotEmpty) {
+                          HapticFeedback.mediumImpact();
                           ref.read(bookmarksProvider.notifier).addBookmark(
                                 title: titleCtrl.text.trim().isNotEmpty
                                     ? titleCtrl.text.trim()
@@ -378,6 +379,7 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
                 dense: true,
                 onTap: () {
                   Navigator.pop(ctx);
+                  HapticFeedback.mediumImpact();
                   ref.read(bookmarksProvider.notifier).removeBookmark(bookmark.id);
                 },
               ),
